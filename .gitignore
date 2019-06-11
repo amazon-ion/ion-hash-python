@@ -1,0 +1,15 @@
+*.pyc
+*.pyo
+*~
+*#
+*.swp
+/.python-version
+/.idea
+/.cache
+/.eggs
+/.tox
+/venv
+/build
+/dist
+/amazon.ion.egg-info
+/docs/_build/
