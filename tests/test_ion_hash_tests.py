@@ -155,8 +155,7 @@ def _consume_value(reader_provider, buf, algorithm, expected_updates, expected_d
     if final_digest is not None:
         assert _actual_digests[-1] == final_digest
     else:
-        #assert _actual_digests == expected_digests
-        assert _actual_digests[-1] == expected_digests[-1]
+        assert _actual_digests == expected_digests
 
 
 def _sexp_to_bytearray(sexp):
