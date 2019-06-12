@@ -1,6 +1,6 @@
 # overrides pytest failure message for bytearray assertions
 def pytest_assertrepr_compare(op, left, right):
-    print "type(left) type(right):", type(left), type(right)
+    print("type(left) type(right):", type(left), type(right))
     if isinstance(left, bytearray) and isinstance(right, bytearray) and op == "==":
         return ["bytearray mismatch:",
                 "expected: " + _hex_string(right),
@@ -38,6 +38,6 @@ def _hex_string(_bytes):
         return ''.join('{:02x} '.format(x) for x in _bytes)
     if isinstance(_bytes, bytes):
         return ' '.join('%02x' % ord(x) for x in _bytes)
-    print "unknown type", type(_bytes)
+    print("unknown type", type(_bytes))
     return _bytes
 

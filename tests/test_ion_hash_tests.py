@@ -15,14 +15,17 @@ from amazon.ionhash.hash_reader import HashEvent
 
 
 def _test_data(algorithm):
-    f = open('ion_hash_tests.ion')
+    #f = open('ion_hash_tests.ion')
+    # TBD fix
+    f = open('/Users/pcornell/dev/ion/ion-hash-python/tests/ion_hash_tests.ion')
     ion_tests = ion.loads(f.read(), single_value=False)
     f.close()
 
     def _has_algorithm(ion_test):
         return algorithm in ion_test['expect']
 
-    return filter(_has_algorithm, ion_tests)
+    #return filter(_has_algorithm, ion_tests)
+    return [ion_tests[0]]
 
 
 _IVM = "$ion_1_0 "
@@ -58,6 +61,7 @@ def _to_buffer(ion_test, binary):
 
 @pytest.mark.parametrize("ion_test", _test_data("identity"), ids=_test_name)
 def test_binary(ion_test):
+    print("running test_binary")
     buf = _to_buffer(ion_test, binary=True)
     _run_test(ion_test, _reader_provider("binary"), buf)
 
@@ -68,6 +72,7 @@ def test_binary_md5(ion_test):
     _run_test(ion_test, _reader_provider("binary"), buf)
 
 
+'''
 @pytest.mark.parametrize("ion_test", _test_data("identity"), ids=_test_name)
 def test_text(ion_test):
     buf = _to_buffer(ion_test, binary=False)
@@ -88,6 +93,7 @@ def test_text_md5(ion_test):
 #@pytest.mark.parametrize("ion_test", _test_data(), ids=_test_name)
 #def test_writer(ion_test):
     #pass
+'''
 
 
 def _run_test(ion_test, reader_provider, buf):
@@ -132,7 +138,8 @@ def _consume_value(reader_provider, buf, algorithm, expected_updates, expected_d
         ion_reader.blocking_reader(managed_reader(reader_provider(), None), buf),
         _hash_function_provider(algorithm))
 
-    reader.next()
+    #reader.next()
+    next(reader)
     event = reader.send(NEXT_EVENT)
     while event.event_type is not IonEventType.STREAM_END:
         event = reader.send(NEXT_EVENT)
@@ -216,7 +223,7 @@ def hex_string(_bytes):
         return ''.join('{:02x} '.format(x) for x in _bytes)
     if isinstance(_bytes, bytes):
         return ' '.join('%02x' % ord(x) for x in _bytes)
-    print "unknown type", type(_bytes)
+    print("unknown type", type(_bytes))
     return _bytes
 
 
@@ -224,11 +231,11 @@ def _dump_buffer(buf):
     if isinstance(buf, BytesIO):
         for x in buf:
             for y in x:
-                print hex(ord(y)),
+                print(hex(ord(y)),)
             print
     else:
         for x in buf:
-            print x
+            print(x)
 
     buf.seek(0)
 

@@ -7,32 +7,14 @@ from amazon.ion.writer_binary_raw import _serialize_float
 from amazon.ion.writer_binary_raw import _serialize_int
 from amazon.ion.writer_binary_raw import _serialize_timestamp
 
-_BEGIN_MARKER_BYTE = 0x0B
-_END_MARKER_BYTE = 0x0E
-_ESCAPE_BYTE = 0x0C
-#_BEGIN_MARKER = bytes(_BEGIN_MARKER_BYTE)
-#_END_MARKER = bytes(_END_MARKER_BYTE)
-_BEGIN_MARKER = bytes('\x0B')
-_END_MARKER = bytes('\x0E')
+_BEGIN_MARKER_BYTE = b'\x0B'
+_END_MARKER_BYTE = b'\x0E'
+_ESCAPE_BYTE = b'\x0C'
+_BEGIN_MARKER = b'\x0B'
+_END_MARKER = b'\x0E'
 
 _TQ_SYMBOL_SID0 = 0x71
 _TQ_ANNOTATED_VALUE = 0xE0
-
-#_TQ = {
-#    IonType.NULL:      0x0F,
-#    IonType.BOOL:      0x10,
-#    IonType.INT:       0x20,
-#    IonType.FLOAT:     0x40,
-#    IonType.DECIMAL:   0x50,
-#    IonType.TIMESTAMP: 0x60,
-#    IonType.SYMBOL:    0x70,
-#    IonType.STRING:    0x80,
-#    IonType.CLOB:      0x90,
-#    IonType.BLOB:      0xA0,
-#    IonType.LIST:      0xB0,
-#    IonType.SEXP:      0xC0,
-#    IonType.STRUCT:    0xD0,
-#}
 
 _TQ = {
     IonType.NULL:      b'\x0F',
@@ -138,7 +120,8 @@ class BaseSerializer(AbstractSerializer):
         self._handle_field_name(self._hash_function, ion_event)
         self._handle_annotations_begin(self._hash_function, ion_event, is_container = True)
         self._hash_function.update(_BEGIN_MARKER)
-        self._hash_function.update([_TQ[ion_event.ion_type]])
+        #self._hash_function.update([_TQ[ion_event.ion_type]])
+        self._hash_function.update(_TQ[ion_event.ion_type])
 
     def step_out(self):
         debug("base.step_out")
@@ -194,7 +177,8 @@ class StructSerializer(BaseSerializer):
         dump_hashes(self._field_hashes, "struct.step_out")
 
         self._parent_hash_function.update(_BEGIN_MARKER)
-        self._parent_hash_function.update([_TQ[IonType.STRUCT]])
+        #self._parent_hash_function.update([_TQ[IonType.STRUCT]])
+        self._parent_hash_function.update(_TQ[IonType.STRUCT])
         self._field_hashes.sort(_bytearray_comparator)
         for digest in self._field_hashes:
             self._parent_hash_function.update(digest)
@@ -207,7 +191,7 @@ class StructSerializer(BaseSerializer):
 
 def _serialize_null(ion_event):
     ba = bytearray()
-    ba.append(chr(ord(_TQ[ion_event.ion_type]) | ord(_TQ[IonType.NULL])))
+    ba.append(_TQ[ion_event.ion_type] | _TQ[IonType.NULL])
     return ba
 
 
@@ -344,7 +328,8 @@ debug_flag = 0
 def debug(*args):
     if debug_flag > 0:
         for arg in args:
-            print arg,
+            #print arg,
+            pass
         print
 
 
