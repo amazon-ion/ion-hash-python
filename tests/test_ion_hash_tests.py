@@ -97,29 +97,22 @@ def test_writer(ion_test):
 
 
 def _run_test(ion_test, reader_provider, buf):
-    # TBD
-    # - individual update
-
     expect = ion_test['expect']
     for algorithm in expect:
-        _run_test_details(expect[algorithm], reader_provider, buf, algorithm)
+        expected_updates = []
+        expected_digests = []
+        final_digest = None
+        for sexp in expect[algorithm]:
+            annot = sexp.ion_annotations[0].text
+            if annot == "update":
+                expected_updates.append(_sexp_to_bytearray(sexp))
+                pass
+            elif annot == "digest":
+                expected_digests.append(_sexp_to_bytearray(sexp))
+            elif annot == "final_digest":
+                final_digest = _sexp_to_bytearray(sexp)
 
-
-def _run_test_details(expect, reader_provider, buf, algorithm):
-    expected_updates = []
-    expected_digests = []
-    final_digest = None
-    for sexp in expect:
-        annot = sexp.ion_annotations[0].text
-        if annot == "update":
-            expected_updates.append(_sexp_to_bytearray(sexp))
-            pass
-        elif annot == "digest":
-            expected_digests.append(_sexp_to_bytearray(sexp))
-        elif annot == "final_digest":
-            final_digest = _sexp_to_bytearray(sexp)
-
-    _consume_value(reader_provider, buf, algorithm, expected_updates, expected_digests, final_digest)
+        _consume_value(reader_provider, buf, algorithm, expected_updates, expected_digests, final_digest)
 
 
 _actual_updates = []
