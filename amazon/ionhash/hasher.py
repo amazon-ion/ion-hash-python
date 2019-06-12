@@ -16,7 +16,7 @@ _BEGIN_MARKER = b'\x0B'
 _END_MARKER = b'\x0E'
 
 _TQ_SYMBOL_SID0 = 0x71
-_TQ_ANNOTATED_VALUE = 0xE0
+_TQ_ANNOTATED_VALUE = b'\xE0'
 
 _TQ = {
     IonType.NULL:      0x0F,
@@ -93,10 +93,7 @@ class AbstractSerializer:
     def _handle_annotations_begin(self, hf, ion_event, is_container = False):
         if ion_event.annotations.__len__() > 0:
             hf.update(_BEGIN_MARKER)
-            #hf.update([_TQ_ANNOTATED_VALUE])
-            ba = bytearray()
-            ba.append(_TQ_ANNOTATED_VALUE)
-            hf.update(ba)
+            hf.update(_TQ_ANNOTATED_VALUE)
             for annotation in ion_event.annotations:
                 _write_symbol(hf, annotation)
             if is_container:
@@ -125,11 +122,7 @@ class BaseSerializer(AbstractSerializer):
         self._handle_field_name(self._hash_function, ion_event)
         self._handle_annotations_begin(self._hash_function, ion_event, is_container = True)
         self._hash_function.update(_BEGIN_MARKER)
-        #self._hash_function.update([_TQ[ion_event.ion_type]])
-        #self._hash_function.update([_TQ[ion_event.ion_type]])
-        ba = bytearray()
-        ba.append(_TQ[ion_event.ion_type])
-        self._hash_function.update(ba)
+        self._hash_function.update(bytes([_TQ[ion_event.ion_type]]))
 
     def step_out(self):
         debug("base.step_out")
@@ -185,15 +178,12 @@ class StructSerializer(BaseSerializer):
         dump_hashes(self._field_hashes, "struct.step_out")
 
         self._parent_hash_function.update(_BEGIN_MARKER)
-        #self._parent_hash_function.update([_TQ[IonType.STRUCT]])
-        ba = bytearray()
-        ba.append(_TQ[IonType.STRUCT])
-        self._parent_hash_function.update(ba)
-        #self._field_hashes.sort(_bytearray_comparator)
-        #self._field_hashes = sorted(self._field_hashes, key=_bytearray_comparator)
+        self._parent_hash_function.update(bytes([_TQ[IonType.STRUCT]]))
+
         self._field_hashes.sort(key=cmp_to_key(_bytearray_comparator))
         for digest in self._field_hashes:
             self._parent_hash_function.update(digest)
+
         self._parent_hash_function.update(_END_MARKER)
         self._handle_annotations_end(self._parent_hash_function, is_container = True)
 
