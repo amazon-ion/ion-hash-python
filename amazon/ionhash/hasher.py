@@ -1,5 +1,6 @@
 from functools import cmp_to_key
 
+from amazon.ion.core import IonEvent
 from amazon.ion.core import IonType
 from amazon.ion.writer_binary_raw import _serialize_blob
 from amazon.ion.writer_binary_raw import _serialize_bool
@@ -168,13 +169,14 @@ class StructSerializer(BaseSerializer):
         dump_hashes(self._field_hashes, "struct.step_in")
 
         self._handle_field_name(self._parent_hash_function, ion_event)
+
         self._handle_annotations_begin(self._parent_hash_function, ion_event, is_container = True)
+        self._parent_hash_function.update(_BEGIN_MARKER)
+        self._parent_hash_function.update(bytes([_TQ[IonType.STRUCT]]))
+
 
     def step_out(self):
         dump_hashes(self._field_hashes, "struct.step_out")
-
-        self._parent_hash_function.update(_BEGIN_MARKER)
-        self._parent_hash_function.update(bytes([_TQ[IonType.STRUCT]]))
 
         self._field_hashes.sort(key=cmp_to_key(_bytearray_comparator))
         for digest in self._field_hashes:
@@ -214,9 +216,17 @@ def _serialize_symbol_token(token):
     return ba
 
 
+_symbol_event = IonEvent(None, IonType.SYMBOL)
+
+
 def _write_symbol(hf, token):
     hf.update(_BEGIN_MARKER)
-    hf.update(_serialize_symbol_token(token))           # TBD escape?
+    _bytes = _serialize_symbol_token(token)
+    [tq, representation] = _scalar_or_null_split_parts(_symbol_event, _bytes)
+    hf.update(bytes([tq]))
+    if representation.__len__() > 0:
+        hf.update(_escape(representation))
+
     hf.update(_END_MARKER)
 
 

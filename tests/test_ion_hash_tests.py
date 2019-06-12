@@ -142,20 +142,17 @@ def _consume_value(reader_provider, buf, algorithm, expected_updates, expected_d
     while event.event_type is not IonEventType.STREAM_END:
         event = reader.send(NEXT_EVENT)
 
-    # TBD assert that this value matches _actual_digests[-1]
+    if expected_updates.__len__() > 0:
+        assert _actual_updates == expected_updates
+
     actual_digest_bytes = reader.send(HashEvent.DIGEST)
-
-    #if expected_updates.__len__() > 0:
-        #assert _actual_updates == expected_updates
-
-    #print "expected_digests:", type(expected_digests), hex_string(expected_digests)
-    #print "actual_digest_bytes:", _actual_digests
-    #print "actual_digest_bytes.hex:", hex_string(_actual_digests)
 
     if final_digest is not None:
         assert _actual_digests[-1] == final_digest
+        assert actual_digest_bytes == final_digest
     else:
         assert _actual_digests == expected_digests
+        assert actual_digest_bytes == expected_digests[-1]
 
 
 def _sexp_to_bytearray(sexp):

@@ -33,6 +33,6 @@ def _hex_string(_bytes):
     if isinstance(_bytes, bytearray):
         return ''.join('{:02x} '.format(x) for x in _bytes)
     if isinstance(_bytes, bytes):
-        return ' '.join('%02x' % ord(x) for x in _bytes)
+        return ' '.join('%02x' % x for x in _bytes)
     return _bytes
 
