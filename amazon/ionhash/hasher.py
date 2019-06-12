@@ -1,3 +1,5 @@
+from functools import cmp_to_key
+
 from amazon.ion.core import IonType
 from amazon.ion.writer_binary_raw import _serialize_blob
 from amazon.ion.writer_binary_raw import _serialize_bool
@@ -7,9 +9,9 @@ from amazon.ion.writer_binary_raw import _serialize_float
 from amazon.ion.writer_binary_raw import _serialize_int
 from amazon.ion.writer_binary_raw import _serialize_timestamp
 
-_BEGIN_MARKER_BYTE = b'\x0B'
-_END_MARKER_BYTE = b'\x0E'
-_ESCAPE_BYTE = b'\x0C'
+_BEGIN_MARKER_BYTE = 0x0B
+_END_MARKER_BYTE = 0x0E
+_ESCAPE_BYTE = 0x0C
 _BEGIN_MARKER = b'\x0B'
 _END_MARKER = b'\x0E'
 
@@ -17,19 +19,19 @@ _TQ_SYMBOL_SID0 = 0x71
 _TQ_ANNOTATED_VALUE = 0xE0
 
 _TQ = {
-    IonType.NULL:      b'\x0F',
-    IonType.BOOL:      b'\x10',
-    IonType.INT:       b'\x20',
-    IonType.FLOAT:     b'\x40',
-    IonType.DECIMAL:   b'\x50',
-    IonType.TIMESTAMP: b'\x60',
-    IonType.SYMBOL:    b'\x70',
-    IonType.STRING:    b'\x80',
-    IonType.CLOB:      b'\x90',
-    IonType.BLOB:      b'\xA0',
-    IonType.LIST:      b'\xB0',
-    IonType.SEXP:      b'\xC0',
-    IonType.STRUCT:    b'\xD0',
+    IonType.NULL:      0x0F,
+    IonType.BOOL:      0x10,
+    IonType.INT:       0x20,
+    IonType.FLOAT:     0x40,
+    IonType.DECIMAL:   0x50,
+    IonType.TIMESTAMP: 0x60,
+    IonType.SYMBOL:    0x70,
+    IonType.STRING:    0x80,
+    IonType.CLOB:      0x90,
+    IonType.BLOB:      0xA0,
+    IonType.LIST:      0xB0,
+    IonType.SEXP:      0xC0,
+    IonType.STRUCT:    0xD0,
 }
 
 
@@ -91,7 +93,10 @@ class AbstractSerializer:
     def _handle_annotations_begin(self, hf, ion_event, is_container = False):
         if ion_event.annotations.__len__() > 0:
             hf.update(_BEGIN_MARKER)
-            hf.update([_TQ_ANNOTATED_VALUE])
+            #hf.update([_TQ_ANNOTATED_VALUE])
+            ba = bytearray()
+            ba.append(_TQ_ANNOTATED_VALUE)
+            hf.update(ba)
             for annotation in ion_event.annotations:
                 _write_symbol(hf, annotation)
             if is_container:
@@ -121,7 +126,10 @@ class BaseSerializer(AbstractSerializer):
         self._handle_annotations_begin(self._hash_function, ion_event, is_container = True)
         self._hash_function.update(_BEGIN_MARKER)
         #self._hash_function.update([_TQ[ion_event.ion_type]])
-        self._hash_function.update(_TQ[ion_event.ion_type])
+        #self._hash_function.update([_TQ[ion_event.ion_type]])
+        ba = bytearray()
+        ba.append(_TQ[ion_event.ion_type])
+        self._hash_function.update(ba)
 
     def step_out(self):
         debug("base.step_out")
@@ -138,7 +146,7 @@ class BaseSerializer(AbstractSerializer):
         #print "scalar_bytes:", hex_string(scalar_bytes), scalar_bytes.__len__()
         [tq, representation] = _scalar_or_null_split_parts(ion_event, scalar_bytes)
         #print "tq:", hex_string(tq), tq.__len__()
-        hf.update(tq)
+        hf.update(bytes([tq]))
         #print "representation:", hex_string(representation), representation.__len__()
         #print "escape(representation):", hex_string(_escape(representation)), _escape(representation).__len__()
         if representation.__len__() > 0:
@@ -178,8 +186,12 @@ class StructSerializer(BaseSerializer):
 
         self._parent_hash_function.update(_BEGIN_MARKER)
         #self._parent_hash_function.update([_TQ[IonType.STRUCT]])
-        self._parent_hash_function.update(_TQ[IonType.STRUCT])
-        self._field_hashes.sort(_bytearray_comparator)
+        ba = bytearray()
+        ba.append(_TQ[IonType.STRUCT])
+        self._parent_hash_function.update(ba)
+        #self._field_hashes.sort(_bytearray_comparator)
+        #self._field_hashes = sorted(self._field_hashes, key=_bytearray_comparator)
+        self._field_hashes.sort(key=cmp_to_key(_bytearray_comparator))
         for digest in self._field_hashes:
             self._parent_hash_function.update(digest)
         self._parent_hash_function.update(_END_MARKER)
@@ -198,7 +210,7 @@ def _serialize_null(ion_event):
 def _serialize_string(ion_event):
     ba = bytearray()
     ba.append(_TQ[IonType.STRING])
-    ba.extend(bytearray(ion_event.value.encode('utf-8'), encoding="utf-8"))
+    ba.extend(ion_event.value.encode('utf-8'))
     return ba
 
 
@@ -244,33 +256,22 @@ _UPDATE_SCALAR_HASH_BYTES_JUMP_TABLE = {
 
 # split scalar bytes into TQ and representation; also handles any special case binary cleanup
 def _scalar_or_null_split_parts(ion_event, _bytes):
-    #print "  _bytes:", hex_string(_bytes), _bytes.__len__()
-    #print "  _bytes[0]:", _bytes[0]
-    #tl = bytes(chr(_bytes[0]))
-    tl = chr(_bytes[0])
-    #tl = bytes(_bytes[0])
-    #print "  tl:", hex_string(tl), tl.__len__()
     offset = 1 + _get_length_length(_bytes)
 
-    # the representation is everything after TL and length
+    # the representation is everything after TL (first byte) and length
     representation = _bytes[offset:]
 
-    tq = tl
+    tq = _bytes[0]
     if (ion_event.ion_type != IonType.BOOL
             and ion_event.ion_type != IonType.SYMBOL
-            and ord(tl) & 0x0F != 0x0F):      # not a null value
-        #tq = ord(tl) & 0xF0                   # zero-out the L nibble
-        tq = chr(ord(tl) & 0xF0)                   # zero-out the L nibble
+            and tq & 0x0F != 0x0F):      # not a null value
+        tq &= 0xF0                       # zero-out the L nibble
 
-    #print "  tq:", hex_string(tq), tq.__len__()
-    #tq = bytes(tq)
     return [tq, representation]
 
 
 # returns a count of bytes in the "length" field
 def _get_length_length(_bytes):
-    #print "  gll._bytes", hex_string(_bytes), _bytes.__len__()
-    #print "  gll._bytes[0]:", _bytes[0]
     if (_bytes[0] & 0x0F) == 0x0E:
         # read subsequent byte(s) as the "length" field
         for i in range(1, len(_bytes)):
@@ -305,13 +306,11 @@ def _bytearray_comparator(a, b):
 
 def _escape(_bytes):
     for b in _bytes:
-        #print "b:", b, type(b), type(_BEGIN_MARKER_BYTE), _BEGIN_MARKER_BYTE, _END_MARKER_BYTE, _ESCAPE_BYTE
         if b == _BEGIN_MARKER_BYTE or b == _END_MARKER_BYTE or b == _ESCAPE_BYTE:
             # found a byte that needs to be escaped;  build a new byte array that
             # escapes that byte as well as any others
             escaped_bytes = bytearray()
             for c in _bytes:
-                #print "c:", c, type(c), _BEGIN_MARKER_BYTE, _END_MARKER_BYTE, _ESCAPE_BYTE
                 if c == _BEGIN_MARKER_BYTE or c == _END_MARKER_BYTE or c == _ESCAPE_BYTE:
                     escaped_bytes.append(_ESCAPE_BYTE)
                 escaped_bytes.append(c)
@@ -353,5 +352,4 @@ def hex_string(_bytes):
 def dump_hashes(hashes, id):
     if debug_flag > 0:
         debug("hashes:", id, ''.join(' {},'.format(hex_string(h)) for h in hashes))
-
 

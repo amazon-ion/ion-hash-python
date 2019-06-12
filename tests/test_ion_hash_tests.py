@@ -24,8 +24,7 @@ def _test_data(algorithm):
     def _has_algorithm(ion_test):
         return algorithm in ion_test['expect']
 
-    #return filter(_has_algorithm, ion_tests)
-    return [ion_tests[0]]
+    return filter(_has_algorithm, ion_tests)
 
 
 _IVM = "$ion_1_0 "
@@ -61,7 +60,6 @@ def _to_buffer(ion_test, binary):
 
 @pytest.mark.parametrize("ion_test", _test_data("identity"), ids=_test_name)
 def test_binary(ion_test):
-    print("running test_binary")
     buf = _to_buffer(ion_test, binary=True)
     _run_test(ion_test, _reader_provider("binary"), buf)
 
@@ -72,7 +70,6 @@ def test_binary_md5(ion_test):
     _run_test(ion_test, _reader_provider("binary"), buf)
 
 
-'''
 @pytest.mark.parametrize("ion_test", _test_data("identity"), ids=_test_name)
 def test_text(ion_test):
     buf = _to_buffer(ion_test, binary=False)
@@ -85,14 +82,15 @@ def test_text_md5(ion_test):
     _run_test(ion_test, _reader_provider("text"), buf)
 
 
-#@pytest.mark.parametrize("ion_test", _test_data(), ids=_test_name)
-#def test_no_step_in(ion_test):
-    #pass
+'''
+@pytest.mark.parametrize("ion_test", _test_data(), ids=_test_name)
+def test_no_step_in(ion_test):
+    pass
 
 
-#@pytest.mark.parametrize("ion_test", _test_data(), ids=_test_name)
-#def test_writer(ion_test):
-    #pass
+@pytest.mark.parametrize("ion_test", _test_data(), ids=_test_name)
+def test_writer(ion_test):
+    pass
 '''
 
 
