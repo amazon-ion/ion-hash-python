@@ -28,6 +28,8 @@ def _test_data(algorithm):
 
 
 _IVM = "$ion_1_0 "
+
+
 def _test_name(ion_test):
     if ion_test.ion_annotations.__len__() > 0:
         test_name = ion_test.ion_annotations[0].text
@@ -97,9 +99,6 @@ def test_writer(ion_test):
 def _run_test(ion_test, reader_provider, buf):
     # TBD
     # - individual update
-    # - md5
-
-    #_dump_buffer(buf)
 
     expect = ion_test['expect']
     for algorithm in expect:
@@ -125,6 +124,8 @@ def _run_test_details(expect, reader_provider, buf, algorithm):
 
 _actual_updates = []
 _actual_digests = []
+
+
 def _consume_value(reader_provider, buf, algorithm, expected_updates, expected_digests, final_digest):
     global _actual_updates
     _actual_updates = []
@@ -136,7 +137,6 @@ def _consume_value(reader_provider, buf, algorithm, expected_updates, expected_d
         ion_reader.blocking_reader(managed_reader(reader_provider(), None), buf),
         _hash_function_provider(algorithm))
 
-    #reader.next()
     next(reader)
     event = reader.send(NEXT_EVENT)
     while event.event_type is not IonEventType.STREAM_END:
@@ -221,19 +221,5 @@ def hex_string(_bytes):
         return ''.join('{:02x} '.format(x) for x in _bytes)
     if isinstance(_bytes, bytes):
         return ' '.join('%02x' % ord(x) for x in _bytes)
-    print("unknown type", type(_bytes))
     return _bytes
-
-
-def _dump_buffer(buf):
-    if isinstance(buf, BytesIO):
-        for x in buf:
-            for y in x:
-                print(hex(ord(y)),)
-            print
-    else:
-        for x in buf:
-            print(x)
-
-    buf.seek(0)
 

@@ -136,12 +136,8 @@ class BaseSerializer(AbstractSerializer):
         hf.update(_BEGIN_MARKER)
 
         scalar_bytes = _serializer(ion_event)(ion_event)
-        #print "scalar_bytes:", hex_string(scalar_bytes), scalar_bytes.__len__()
         [tq, representation] = _scalar_or_null_split_parts(ion_event, scalar_bytes)
-        #print "tq:", hex_string(tq), tq.__len__()
         hf.update(bytes([tq]))
-        #print "representation:", hex_string(representation), representation.__len__()
-        #print "escape(representation):", hex_string(_escape(representation)), _escape(representation).__len__()
         if representation.__len__() > 0:
             hf.update(_escape(representation))
 
@@ -267,7 +263,7 @@ def _get_length_length(_bytes):
         for i in range(1, len(_bytes)):
             if (_bytes[i] & 0x80) != 0:
                 return i
-        # TBD throw illegalstateexception:  "Problem while reading VarUInt!"
+        raise Exception("Problem while reading VarUInt!")
     return 0
 
 
@@ -305,6 +301,7 @@ def _escape(_bytes):
                     escaped_bytes.append(_ESCAPE_BYTE)
                 escaped_bytes.append(c)
             return escaped_bytes
+
     # no escaping needed, return the original _bytes
     return _bytes
 
@@ -326,16 +323,10 @@ def debug(*args):
 def hex_string(_bytes):
     if _bytes is None:
         return 'None'
-    #if type(_bytes) == bytearray:
     if isinstance(_bytes, bytearray):
         return ''.join('{:02x} '.format(x) for x in _bytes)
-    #if type(_bytes) == bytes:
     if isinstance(_bytes, bytes):
         return ' '.join('%02x' % ord(x) for x in _bytes)
-        #res = ''
-        #for b in _bytes:
-            #res += ' ' + b.encode('hex')
-        #return res
     return _bytes
 
 # TBD remove
