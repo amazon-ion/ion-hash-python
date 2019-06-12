@@ -2,6 +2,7 @@ import hashlib
 import pytest
 from six import StringIO
 from io import BytesIO
+from os.path import abspath, join
 
 import amazon.ion.simpleion as ion
 import amazon.ion.reader as ion_reader
@@ -15,9 +16,8 @@ from amazon.ionhash.hash_reader import HashEvent
 
 
 def _test_data(algorithm):
-    #f = open('ion_hash_tests.ion')
-    # TBD fix
-    f = open('/Users/pcornell/dev/ion/ion-hash-python/tests/ion_hash_tests.ion')
+    path = abspath(join(abspath(__file__), '..', '..', 'tests', 'ion_hash_tests.ion'))
+    f = open(path)
     ion_tests = ion.loads(f.read(), single_value=False)
     f.close()
 
@@ -201,14 +201,4 @@ class _MD5Hash:
         self._m = hashlib.md5()
         _actual_digests.append(digest)
         return digest
-
-
-def hex_string(_bytes):
-    if _bytes is None:
-        return 'None'
-    if isinstance(_bytes, bytearray):
-        return ''.join('{:02x} '.format(x) for x in _bytes)
-    if isinstance(_bytes, bytes):
-        return ' '.join('%02x' % ord(x) for x in _bytes)
-    return _bytes
 
