@@ -20,7 +20,7 @@ class HashEvent(Enum):
     DIGEST = 2
 
 
-def hasher(reader, hash_function_provider, hashing_enabled = True):
+def hasher(reader, hash_function_provider, hashing_enabled=True):
     hasher = _Hasher(hash_function_provider)
     event = None
     while True:
