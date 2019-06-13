@@ -134,7 +134,7 @@ class _AbstractSerializer:
         if ion_event.field_name is not None:
             _write_symbol(hf, ion_event.field_name)
 
-    def _handle_annotations_begin(self, hf, ion_event, is_container = False):
+    def _handle_annotations_begin(self, hf, ion_event, is_container=False):
         if ion_event.annotations.__len__() > 0:
             hf.update(_BEGIN_MARKER)
             hf.update(_TQ_ANNOTATED_VALUE)
@@ -143,7 +143,7 @@ class _AbstractSerializer:
             if is_container:
                 self._has_container_annotations = True
 
-    def _handle_annotations_end(self, hf, ion_event = None, is_container = False):
+    def _handle_annotations_end(self, hf, ion_event = None, is_container=False):
         if (ion_event is not None and ion_event.annotations.__len__() > 0) \
                 or (is_container and self._has_container_annotations):
             hf.update(_END_MARKER)
@@ -164,14 +164,14 @@ class _BaseSerializer(_AbstractSerializer):
     def step_in(self, ion_event):
         _debug("base.step_in")
         self._handle_field_name(self._hash_function, ion_event)
-        self._handle_annotations_begin(self._hash_function, ion_event, is_container = True)
+        self._handle_annotations_begin(self._hash_function, ion_event, is_container=True)
         self._hash_function.update(_BEGIN_MARKER)
         self._hash_function.update(bytes([_TQ[ion_event.ion_type]]))
 
     def step_out(self):
         _debug("base.step_out")
         self._hash_function.update(_END_MARKER)
-        self._handle_annotations_end(self._hash_function, is_container = True)
+        self._handle_annotations_end(self._hash_function, is_container=True)
 
     def digest(self):
         return self._hash_function.digest()
@@ -213,7 +213,7 @@ class StructSerializer(_BaseSerializer):
 
         self._handle_field_name(self._parent_hash_function, ion_event)
 
-        self._handle_annotations_begin(self._parent_hash_function, ion_event, is_container = True)
+        self._handle_annotations_begin(self._parent_hash_function, ion_event, is_container=True)
         self._parent_hash_function.update(_BEGIN_MARKER)
         self._parent_hash_function.update(bytes([_TQ[IonType.STRUCT]]))
 
@@ -226,7 +226,7 @@ class StructSerializer(_BaseSerializer):
             self._parent_hash_function.update(digest)
 
         self._parent_hash_function.update(_END_MARKER)
-        self._handle_annotations_end(self._parent_hash_function, is_container = True)
+        self._handle_annotations_end(self._parent_hash_function, is_container=True)
 
     def digest(self):
         return self._parent_hash_function.digest()
@@ -372,10 +372,8 @@ def _debug(*args):
 def _hex_string(_bytes):
     if _bytes is None:
         return 'None'
-    if isinstance(_bytes, bytearray):
-        return ''.join('{:02x} '.format(x) for x in _bytes)
-    if isinstance(_bytes, bytes):
-        return ' '.join('%02x' % ord(x) for x in _bytes)
+    if isinstance(_bytes, bytes) or isinstance(_bytes, bytearray):
+        return ''.join(' %02x' % x for x in _bytes)
     return _bytes
 
 
