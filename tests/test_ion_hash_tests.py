@@ -10,8 +10,13 @@ from amazon.ion.reader_managed import managed_reader
 from amazon.ion.reader_text import text_reader
 from amazon.ion.reader_binary import binary_reader
 from amazon.ion.reader import NEXT_EVENT
+from amazon.ion.writer import blocking_writer
+from amazon.ion.writer_binary import binary_writer
+from amazon.ion.writer_text import raw_writer
 from amazon.ion.core import IonEventType
+from amazon.ion.core import IonEvent
 from amazon.ionhash.hasher import hasher
+from amazon.ionhash.hasher import hash_writer
 from amazon.ionhash.hasher import HashEvent
 
 
@@ -60,43 +65,98 @@ def _to_buffer(ion_test, binary):
         return StringIO(v)
 
 
+def _consumer_provider(reader_provider, buf):
+    def _f(algorithm):
+        buf.seek(0)
+        reader = hasher(
+            ion_reader.blocking_reader(managed_reader(reader_provider(), None), buf),
+            _hash_function_provider(algorithm))
+
+        next(reader)
+        _consume(reader)
+
+        return reader.send(HashEvent.DIGEST)
+
+    return _f
+
+
+def _consume(reader, writer=None):
+    event = reader.send(NEXT_EVENT)
+    if writer is not None:
+        writer.send(event)
+    while event.event_type is not IonEventType.STREAM_END:
+        event = reader.send(NEXT_EVENT)
+        if writer is not None:
+            writer.send(event)
+
+
+def _writer_provider(reader_provider, buf):
+    def _f(algorithm):
+        buf.seek(0)
+        reader = ion_reader.blocking_reader(managed_reader(reader_provider(), None), buf)
+
+        writer = hash_writer(
+            blocking_writer(raw_writer(), BytesIO()),
+            _hash_function_provider(algorithm))
+
+        next(writer)
+        _consume(reader, writer)
+
+        digest = writer.send(HashEvent.DIGEST)
+        writer.send(IonEvent(IonEventType.STREAM_END))
+        return digest
+
+    return _f
+
+
 @pytest.mark.parametrize("ion_test", _test_data("identity"), ids=_test_name)
 def test_binary(ion_test):
-    buf = _to_buffer(ion_test, binary=True)
-    _run_test(ion_test, _reader_provider("binary"), buf)
+    _run_test(ion_test,
+              _consumer_provider(_reader_provider("binary"),
+                                 _to_buffer(ion_test, binary=True)))
 
 
 @pytest.mark.parametrize("ion_test", _test_data("md5"), ids=_test_name)
 def test_binary_md5(ion_test):
-    buf = _to_buffer(ion_test, binary=True)
-    _run_test(ion_test, _reader_provider("binary"), buf)
+    _run_test(ion_test,
+              _consumer_provider(_reader_provider("binary"),
+                                 _to_buffer(ion_test, binary=True)))
 
 
 @pytest.mark.parametrize("ion_test", _test_data("identity"), ids=_test_name)
 def test_text(ion_test):
-    buf = _to_buffer(ion_test, binary=False)
-    _run_test(ion_test, _reader_provider("text"), buf)
+    _run_test(ion_test,
+              _consumer_provider(_reader_provider("text"),
+                                 _to_buffer(ion_test, binary=False)))
 
 
 @pytest.mark.parametrize("ion_test", _test_data("md5"), ids=_test_name)
 def test_text_md5(ion_test):
-    buf = _to_buffer(ion_test, binary=False)
-    _run_test(ion_test, _reader_provider("text"), buf)
-
+    _run_test(ion_test,
+              _consumer_provider(_reader_provider("text"),
+                                 _to_buffer(ion_test, binary=False)))
 
 '''
 @pytest.mark.parametrize("ion_test", _test_data(), ids=_test_name)
 def test_no_step_in(ion_test):
     pass
-
-
-@pytest.mark.parametrize("ion_test", _test_data(), ids=_test_name)
-def test_writer(ion_test):
-    pass
 '''
 
+@pytest.mark.parametrize("ion_test", _test_data("identity"), ids=_test_name)
+def test_writer(ion_test):
+    _run_test(ion_test,
+              _writer_provider(_reader_provider("text"),
+                               _to_buffer(ion_test, binary=False)))
 
-def _run_test(ion_test, reader_provider, buf):
+
+_actual_updates = []
+_actual_digests = []
+
+
+def _run_test(ion_test, digester):
+    global _actual_updates
+    global _actual_digests
+
     expect = ion_test['expect']
     for algorithm in expect:
         expected_updates = []
@@ -112,40 +172,20 @@ def _run_test(ion_test, reader_provider, buf):
             elif annot == "final_digest":
                 final_digest = _sexp_to_bytearray(sexp)
 
-        _consume_value(reader_provider, buf, algorithm, expected_updates, expected_digests, final_digest)
+        _actual_updates = []
+        _actual_digests = []
 
+        actual_digest_bytes = digester(algorithm)
 
-_actual_updates = []
-_actual_digests = []
+        if expected_updates.__len__() > 0:
+            assert _actual_updates == expected_updates
 
-
-def _consume_value(reader_provider, buf, algorithm, expected_updates, expected_digests, final_digest):
-    global _actual_updates
-    _actual_updates = []
-    global _actual_digests
-    _actual_digests = []
-
-    buf.seek(0)
-    reader = hasher(
-        ion_reader.blocking_reader(managed_reader(reader_provider(), None), buf),
-        _hash_function_provider(algorithm))
-
-    next(reader)
-    event = reader.send(NEXT_EVENT)
-    while event.event_type is not IonEventType.STREAM_END:
-        event = reader.send(NEXT_EVENT)
-
-    if expected_updates.__len__() > 0:
-        assert _actual_updates == expected_updates
-
-    actual_digest_bytes = reader.send(HashEvent.DIGEST)
-
-    if final_digest is not None:
-        assert _actual_digests[-1] == final_digest
-        assert actual_digest_bytes == final_digest
-    else:
-        assert _actual_digests == expected_digests
-        assert actual_digest_bytes == expected_digests[-1]
+        if final_digest is not None:
+            assert _actual_digests[-1] == final_digest
+            assert actual_digest_bytes == final_digest
+        else:
+            assert _actual_digests == expected_digests
+            assert actual_digest_bytes == expected_digests[-1]
 
 
 def _sexp_to_bytearray(sexp):
@@ -202,3 +242,10 @@ class _MD5Hash:
         _actual_digests.append(digest)
         return digest
 
+
+def _hex_string(_bytes):
+    if _bytes is None:
+        return 'None'
+    if isinstance(_bytes, bytes) or isinstance(_bytes, bytearray):
+        return ''.join(' %02x' % x for x in _bytes)
+    return _bytes
