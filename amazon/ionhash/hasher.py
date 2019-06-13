@@ -1,7 +1,10 @@
 from functools import cmp_to_key
 
+from amazon.ion.core import DataEvent
 from amazon.ion.core import IonEvent
+from amazon.ion.core import IonEventType
 from amazon.ion.core import IonType
+from amazon.ion.util import Enum
 from amazon.ion.writer_binary_raw import _serialize_blob
 from amazon.ion.writer_binary_raw import _serialize_bool
 from amazon.ion.writer_binary_raw import _serialize_clob
@@ -9,6 +12,46 @@ from amazon.ion.writer_binary_raw import _serialize_decimal
 from amazon.ion.writer_binary_raw import _serialize_float
 from amazon.ion.writer_binary_raw import _serialize_int
 from amazon.ion.writer_binary_raw import _serialize_timestamp
+
+
+class HashEvent(Enum):
+    DISABLE_HASHING = 0
+    ENABLE_HASHING = 1
+    DIGEST = 2
+
+
+def hasher(reader, hash_function_provider, hashing_enabled = True):
+    hasher = _Hasher(hash_function_provider)
+    event = None
+    while True:
+        directive = yield event
+        event = reader.send(directive)
+        while event is not None:
+            if directive == HashEvent.DISABLE_HASHING:
+                hashing_enabled = False
+
+            elif directive == HashEvent.ENABLE_HASHING:
+                hashing_enabled = True
+
+            elif directive == HashEvent.DIGEST:
+                event = hasher.digest()
+
+            elif isinstance(event, IonEvent) and event.event_type is not IonEventType.STREAM_END:
+                if hashing_enabled:
+                    if event.event_type is IonEventType.CONTAINER_START:
+                        hasher.step_in(event)
+
+                    elif event.event_type is IonEventType.CONTAINER_END:
+                        hasher.step_out()
+
+                    else:
+                        hasher.update(event)
+
+            directive = yield event
+
+            if isinstance(directive, DataEvent):
+                event = reader.send(directive)
+
 
 _BEGIN_MARKER_BYTE = 0x0B
 _END_MARKER_BYTE = 0x0E
@@ -36,53 +79,53 @@ _TQ = {
 }
 
 
-class Hasher:
+class _Hasher:
     def __init__(self, hash_function_provider):
         self._hash_function_provider = hash_function_provider
         self._hash_function = self._hash_function_provider()
-        self._current_hasher = BaseSerializer(self._hash_function)
+        self._current_hasher = _BaseSerializer(self._hash_function)
         self._hasher_stack = [self._current_hasher]
 
     def update(self, ion_event):
-        debug(ion_event)
+        _debug(ion_event)
         self._current_hasher.update(ion_event)
 
     def step_in(self, ion_event):
-        debug(ion_event)
+        _debug(ion_event)
         if ion_event.ion_type == IonType.STRUCT:
             # TBD fix to avoid _hash_function reference
             self._current_hasher = StructSerializer(self._current_hasher._hash_function, self._hash_function_provider)
         else:
             if isinstance(self._current_hasher, StructSerializer):
-                self._current_hasher = BaseSerializer(self._hash_function_provider())
+                self._current_hasher = _BaseSerializer(self._hash_function_provider())
             else:
-                self._current_hasher = BaseSerializer(self._hash_function)
+                self._current_hasher = _BaseSerializer(self._hash_function)
 
         self._hasher_stack.append(self._current_hasher)
         self._current_hasher.step_in(ion_event)
 
     def step_out(self):
-        debug("step_out")
+        _debug("step_out")
         self._current_hasher.step_out()
 
         if isinstance(self._hasher_stack[-2], StructSerializer):
             digest = self._current_hasher.digest()
-            debug("hasher.step_out.digest:", hex_string(digest))
+            _debug("hasher.step_out.digest:", _hex_string(digest))
             self._hasher_stack[-2]._field_hashes.append(_escape(digest))      # TBD internalize _field_hashes
-            dump_hashes(self._hasher_stack[-2]._field_hashes, "hasher.step_out.hashes.from_stack")
+            _dump_hashes(self._hasher_stack[-2]._field_hashes, "hasher.step_out.hashes.from_stack")
 
         self._hasher_stack.pop()
 
         self._current_hasher = self._hasher_stack[-1]
 
         if isinstance(self._current_hasher, StructSerializer):
-            dump_hashes(self._current_hasher._field_hashes, "hasher.step_out.hashes")
+            _dump_hashes(self._current_hasher._field_hashes, "hasher.step_out.hashes")
 
     def digest(self):
         return self._hash_function.digest()
 
 
-class AbstractSerializer:
+class _AbstractSerializer:
     def __init__(self, hash_function):
         self._hash_function = hash_function
         self._has_container_annotations = False
@@ -108,25 +151,25 @@ class AbstractSerializer:
                 self._has_container_annotations = False
 
 
-class BaseSerializer(AbstractSerializer):
+class _BaseSerializer(_AbstractSerializer):
     def __init__(self, hash_function):
-        AbstractSerializer.__init__(self, hash_function)
+        _AbstractSerializer.__init__(self, hash_function)
 
     def update(self, ion_event):
-        debug("base.update")
+        _debug("base.update")
         self._handle_annotations_begin(self._hash_function, ion_event)
         self._write_scalar(self._hash_function, ion_event)
         self._handle_annotations_end(self._hash_function, ion_event)
 
     def step_in(self, ion_event):
-        debug("base.step_in")
+        _debug("base.step_in")
         self._handle_field_name(self._hash_function, ion_event)
         self._handle_annotations_begin(self._hash_function, ion_event, is_container = True)
         self._hash_function.update(_BEGIN_MARKER)
         self._hash_function.update(bytes([_TQ[ion_event.ion_type]]))
 
     def step_out(self):
-        debug("base.step_out")
+        _debug("base.step_out")
         self._hash_function.update(_END_MARKER)
         self._handle_annotations_end(self._hash_function, is_container = True)
 
@@ -145,14 +188,14 @@ class BaseSerializer(AbstractSerializer):
         hf.update(_END_MARKER)
 
 
-# TBD refactor to extend an AbstractSerializer class?
-class StructSerializer(BaseSerializer):
+# TBD refactor to extend an _AbstractSerializer class?
+class StructSerializer(_BaseSerializer):
     def __init__(self, parent_hash_function, hash_function_provider):
         self._parent_hash_function = parent_hash_function
-        BaseSerializer.__init__(self, hash_function_provider())
+        _BaseSerializer.__init__(self, hash_function_provider())
 
         self._field_hashes = []
-        self._scalar_serializer = BaseSerializer(hash_function_provider())
+        self._scalar_serializer = _BaseSerializer(hash_function_provider())
 
     def update(self, ion_event):
         # fieldname
@@ -163,10 +206,10 @@ class StructSerializer(BaseSerializer):
 
         digest = self._scalar_serializer._hash_function.digest()
         self._field_hashes.append(_escape(digest))
-        dump_hashes(self._field_hashes, "struct.update")
+        _dump_hashes(self._field_hashes, "struct.update")
 
     def step_in(self, ion_event):
-        dump_hashes(self._field_hashes, "struct.step_in")
+        _dump_hashes(self._field_hashes, "struct.step_in")
 
         self._handle_field_name(self._parent_hash_function, ion_event)
 
@@ -176,7 +219,7 @@ class StructSerializer(BaseSerializer):
 
 
     def step_out(self):
-        dump_hashes(self._field_hashes, "struct.step_out")
+        _dump_hashes(self._field_hashes, "struct.step_out")
 
         self._field_hashes.sort(key=cmp_to_key(_bytearray_comparator))
         for digest in self._field_hashes:
@@ -316,21 +359,17 @@ def _escape(_bytes):
     return _bytes
 
 
-# TBD remove
-debug_flag = 0
+_debug_flag = 0
 
 
-# TBD remove
-def debug(*args):
-    if debug_flag > 0:
+def _debug(*args):
+    if _debug_flag > 0:
         for arg in args:
-            #print arg,
-            pass
+            print(arg,)
         print
 
 
-# TBD remove
-def hex_string(_bytes):
+def _hex_string(_bytes):
     if _bytes is None:
         return 'None'
     if isinstance(_bytes, bytearray):
@@ -339,8 +378,8 @@ def hex_string(_bytes):
         return ' '.join('%02x' % ord(x) for x in _bytes)
     return _bytes
 
-# TBD remove
-def dump_hashes(hashes, id):
-    if debug_flag > 0:
-        debug("hashes:", id, ''.join(' {},'.format(hex_string(h)) for h in hashes))
+
+def _dump_hashes(hashes, id):
+    if _debug_flag > 0:
+        _debug("hashes:", id, ''.join(' {},'.format(_hex_string(h)) for h in hashes))
 

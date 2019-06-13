@@ -11,8 +11,8 @@ from amazon.ion.reader_text import text_reader
 from amazon.ion.reader_binary import binary_reader
 from amazon.ion.reader import NEXT_EVENT
 from amazon.ion.core import IonEventType
-from amazon.ionhash.hash_reader import hashing_reader
-from amazon.ionhash.hash_reader import HashEvent
+from amazon.ionhash.hasher import hasher
+from amazon.ionhash.hasher import HashEvent
 
 
 def _test_data(algorithm):
@@ -126,7 +126,7 @@ def _consume_value(reader_provider, buf, algorithm, expected_updates, expected_d
     _actual_digests = []
 
     buf.seek(0)
-    reader = hashing_reader(
+    reader = hasher(
         ion_reader.blocking_reader(managed_reader(reader_provider(), None), buf),
         _hash_function_provider(algorithm))
 
