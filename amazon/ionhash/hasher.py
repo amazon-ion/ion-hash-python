@@ -20,66 +20,48 @@ class HashEvent(Enum):
     DIGEST = 2
 
 
-# TBD leverage _hash_event
-# TBD merge hasher and hash_writer?
-def hasher(reader, hash_function_provider, hashing_enabled=True):
-    hasher = _Hasher(hash_function_provider)
-    event = None
-    while True:
-        directive = yield event
-
-        if isinstance(directive, DataEvent):
-            event = reader.send(directive)
-
-        if isinstance(event, IonEvent) and hashing_enabled:
-            _hash_event(hasher, event)
-
-        while event is not None:
-            if directive == HashEvent.DISABLE_HASHING:
-                hashing_enabled = False
-
-            elif directive == HashEvent.ENABLE_HASHING:
-                hashing_enabled = True
-
-            elif directive == HashEvent.DIGEST:
-                event = hasher.digest()
-
-            directive = yield event
-
-            if isinstance(directive, DataEvent):
-                event = reader.send(directive)
-
-            if isinstance(event, IonEvent) and hashing_enabled:
-                _hash_event(hasher, event)
+def hash_reader(reader, hash_function_provider, hashing_enabled=True):
+    return _hasher(_reader_handler, reader, hash_function_provider, hashing_enabled)
 
 
 def hash_writer(writer, hash_function_provider, hashing_enabled=True):
+    return _hasher(_writer_handler, writer, hash_function_provider, hashing_enabled)
+
+
+def _hasher(handler, delegate, hash_function_provider, hashing_enabled=True):
     hasher = _Hasher(hash_function_provider)
-    event = None
+    output = None
     while True:
-        directive = yield event
-
-        if isinstance(directive, IonEvent):
-            event = writer.send(directive)
-            if hashing_enabled:
-                _hash_event(hasher, directive)
-
-        while event is not None:
-            if directive == HashEvent.DISABLE_HASHING:
+        input = yield output
+        output = handler(input, output, hasher, delegate, hashing_enabled)
+        while output is not None:
+            if input == HashEvent.DISABLE_HASHING:
                 hashing_enabled = False
 
-            elif directive == HashEvent.ENABLE_HASHING:
+            elif input == HashEvent.ENABLE_HASHING:
                 hashing_enabled = True
 
-            elif directive == HashEvent.DIGEST:
-                event = hasher.digest()
+            elif input == HashEvent.DIGEST:
+                output = hasher.digest()
 
-            directive = yield event
+            input = yield output
+            output = handler(input, output, hasher, delegate, hashing_enabled)
 
-            if isinstance(directive, IonEvent):
-                event = writer.send(directive)
-                if hashing_enabled:
-                    _hash_event(hasher, directive)
+
+def _reader_handler(input, output, hasher, reader, hashing_enabled):
+    if isinstance(input, DataEvent):
+        output = reader.send(input)
+    if isinstance(output, IonEvent) and hashing_enabled:
+        _hash_event(hasher, output)
+    return output
+
+
+def _writer_handler(input, output, hasher, writer, hashing_enabled):
+    if isinstance(input, IonEvent):
+        output = writer.send(input)
+        if hashing_enabled:
+            _hash_event(hasher, input)
+    return output
 
 
 def _hash_event(hasher, event):

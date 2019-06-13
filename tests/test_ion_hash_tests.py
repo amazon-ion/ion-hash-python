@@ -15,7 +15,7 @@ from amazon.ion.writer_binary import binary_writer
 from amazon.ion.writer_text import raw_writer
 from amazon.ion.core import IonEventType
 from amazon.ion.core import IonEvent
-from amazon.ionhash.hasher import hasher
+from amazon.ionhash.hasher import hash_reader
 from amazon.ionhash.hasher import hash_writer
 from amazon.ionhash.hasher import HashEvent
 
@@ -68,7 +68,7 @@ def _to_buffer(ion_test, binary):
 def _consumer_provider(reader_provider, buf):
     def _f(algorithm):
         buf.seek(0)
-        reader = hasher(
+        reader = hash_reader(
             ion_reader.blocking_reader(managed_reader(reader_provider(), None), buf),
             _hash_function_provider(algorithm))
 
