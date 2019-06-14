@@ -10,6 +10,7 @@ from amazon.ion.reader_managed import managed_reader
 from amazon.ion.reader_text import text_reader
 from amazon.ion.reader_binary import binary_reader
 from amazon.ion.reader import NEXT_EVENT
+from amazon.ion.reader import SKIP_EVENT
 from amazon.ion.writer import blocking_writer
 from amazon.ion.writer_binary import binary_writer
 from amazon.ion.writer_text import raw_writer
@@ -136,11 +137,28 @@ def test_text_md5(ion_test):
               _consumer_provider(_reader_provider("text"),
                                  _to_buffer(ion_test, binary=False)))
 
-'''
-@pytest.mark.parametrize("ion_test", _test_data(), ids=_test_name)
-def test_no_step_in(ion_test):
-    pass
-'''
+@pytest.mark.parametrize("ion_test", _test_data("identity"), ids=_test_name)
+def test_skip_over(ion_test):
+    buf = _to_buffer(ion_test, binary=True)
+
+    def skipping_consumer(algorithm):
+        buf.seek(0)
+        reader = hash_reader(
+            ion_reader.blocking_reader(managed_reader(_reader_provider("binary")(), None), buf),
+            _hash_function_provider(algorithm))
+
+        next(reader)
+        event = reader.send(NEXT_EVENT)
+        while event.event_type != IonEventType.STREAM_END:
+            if event.event_type == IonEventType.CONTAINER_START:
+                event = reader.send(SKIP_EVENT)
+            else:
+                event = reader.send(NEXT_EVENT)
+
+        return reader.send(HashEvent.DIGEST)
+
+    _run_test(ion_test, skipping_consumer)
+
 
 @pytest.mark.parametrize("ion_test", _test_data("identity"), ids=_test_name)
 def test_writer(ion_test):

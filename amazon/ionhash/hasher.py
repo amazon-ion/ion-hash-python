@@ -5,6 +5,8 @@ from amazon.ion.core import IonEvent
 from amazon.ion.core import IonEventType
 from amazon.ion.core import IonType
 from amazon.ion.util import Enum
+from amazon.ion.reader import NEXT_EVENT
+from amazon.ion.reader import SKIP_EVENT
 from amazon.ion.writer_binary_raw import _serialize_blob
 from amazon.ion.writer_binary_raw import _serialize_bool
 from amazon.ion.writer_binary_raw import _serialize_clob
@@ -37,22 +39,38 @@ def _hasher(handler, delegate, hash_function_provider, hashing_enabled=True):
         while output is not None:
             if input == HashEvent.DISABLE_HASHING:
                 hashing_enabled = False
+                input = yield
 
             elif input == HashEvent.ENABLE_HASHING:
                 hashing_enabled = True
+                input = yield
 
             elif input == HashEvent.DIGEST:
-                output = hasher.digest()
+                input = yield hasher.digest()
 
-            input = yield output
+            else:
+                input = yield output
+
             output = handler(input, output, hasher, delegate, hashing_enabled)
 
 
 def _reader_handler(input, output, hasher, reader, hashing_enabled):
     if isinstance(input, DataEvent):
-        output = reader.send(input)
+        if input == SKIP_EVENT and hashing_enabled:
+            depth = output.depth
+
+            output = reader.send(NEXT_EVENT)
+            print("depth:", depth, output.depth)
+            while output.event_type != IonEventType.STREAM_END and output.depth > depth:
+                _hash_event(hasher, output)
+                output = reader.send(NEXT_EVENT)
+
+        else:
+            output = reader.send(input)
+
     if isinstance(output, IonEvent) and hashing_enabled:
         _hash_event(hasher, output)
+
     return output
 
 
@@ -275,7 +293,7 @@ def _serialize_symbol_token(token):
         ba.append(_TQ_SYMBOL_SID0)
     else:
         ba.append(_TQ[IonType.SYMBOL])
-        ba.extend(bytearray(token.text, encoding="utf-8"))           # TBD escape?
+        ba.extend(bytearray(token.text, encoding="utf-8"))
     return ba
 
 
