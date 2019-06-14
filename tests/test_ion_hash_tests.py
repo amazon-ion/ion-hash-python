@@ -73,7 +73,6 @@ def _consumer_provider(reader_provider, buf):
             ion_reader.blocking_reader(managed_reader(reader_provider(), None), buf),
             _hash_function_provider(algorithm))
 
-        next(reader)
         _consume(reader)
 
         return reader.send(HashEvent.DIGEST)
@@ -100,7 +99,6 @@ def _writer_provider(reader_provider, buf):
             blocking_writer(raw_writer(), BytesIO()),
             _hash_function_provider(algorithm))
 
-        next(writer)
         _consume(reader, writer)
 
         digest = writer.send(HashEvent.DIGEST)
@@ -137,6 +135,7 @@ def test_text_md5(ion_test):
               _consumer_provider(_reader_provider("text"),
                                  _to_buffer(ion_test, binary=False)))
 
+
 @pytest.mark.parametrize("ion_test", _test_data("identity"), ids=_test_name)
 def test_skip_over(ion_test):
     buf = _to_buffer(ion_test, binary=True)
@@ -147,7 +146,6 @@ def test_skip_over(ion_test):
             ion_reader.blocking_reader(managed_reader(_reader_provider("binary")(), None), buf),
             _hash_function_provider(algorithm))
 
-        next(reader)
         event = reader.send(NEXT_EVENT)
         while event.event_type != IonEventType.STREAM_END:
             if event.event_type == IonEventType.CONTAINER_START:

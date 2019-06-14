@@ -23,11 +23,15 @@ class HashEvent(Enum):
 
 
 def hash_reader(reader, hash_function_provider, hashing_enabled=True):
-    return _hasher(_reader_handler, reader, hash_function_provider, hashing_enabled)
+    hr = _hasher(_reader_handler, reader, hash_function_provider, hashing_enabled)
+    next(hr)
+    return hr
 
 
 def hash_writer(writer, hash_function_provider, hashing_enabled=True):
-    return _hasher(_writer_handler, writer, hash_function_provider, hashing_enabled)
+    hw = _hasher(_writer_handler, writer, hash_function_provider, hashing_enabled)
+    next(hw)
+    return hw
 
 
 def _hasher(handler, delegate, hash_function_provider, hashing_enabled=True):
