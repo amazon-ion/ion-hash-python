@@ -1,17 +1,12 @@
 from io import BytesIO
 
-import amazon.ion.simpleion as ion
-import amazon.ion.reader as ion_reader
-from amazon.ion.core import IonEventType
-from amazon.ion.reader_managed import managed_reader
-from amazon.ion.reader_binary import binary_reader
-from amazon.ion.reader import NEXT_EVENT
-from amazon.ion.reader import SKIP_EVENT
 from amazon.ion.writer import blocking_writer
 from amazon.ion.writer_binary import binary_writer
 from amazon.ion.writer_text import raw_writer
 from amazon.ionhash.hasher import hash_writer
 
+from .util import binary_reader_over
+from .util import consume
 from .util import hash_function_provider
 
 
@@ -20,7 +15,7 @@ def test_hash_writer():
     algorithm = "md5"
 
     # generate events to be used to write the data
-    events = _consume(_binary_reader_over(ion_str))
+    events = consume(binary_reader_over(ion_str))
 
     _run_test(_writer_provider("binary"), events, algorithm)
     _run_test(_writer_provider("text"), events, algorithm)
@@ -52,28 +47,4 @@ def _writer_provider(type):
         elif type == "text":
             return raw_writer()
     return _f
-
-
-def _binary_reader_over(ion_str):
-    value = ion.loads(ion_str)
-    _bytes = ion.dumps(value, binary=True)
-    return ion_reader.blocking_reader(managed_reader(binary_reader(), None), BytesIO(_bytes))
-
-
-def _consume(reader, skip_list=[]):
-    skip_set = set(skip_list)
-    events = []
-    i = -1
-    while True:
-        i += 1
-        if i in skip_set:
-            event = reader.send(SKIP_EVENT)
-        else:
-            event = reader.send(NEXT_EVENT)
-
-        events.append(event)
-        if event.event_type == IonEventType.STREAM_END:
-            break
-
-    return events
 

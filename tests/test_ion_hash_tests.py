@@ -1,4 +1,3 @@
-import hashlib
 import pytest
 from six import StringIO
 from io import BytesIO
@@ -19,6 +18,8 @@ from amazon.ion.core import IonEvent
 from amazon.ionhash.hasher import hash_reader
 from amazon.ionhash.hasher import hash_writer
 from amazon.ionhash.hasher import HashEvent
+
+from .util import hash_function_provider
 
 
 def _test_data(algorithm):
@@ -71,7 +72,7 @@ def _consumer_provider(reader_provider, buf):
         buf.seek(0)
         reader = hash_reader(
             ion_reader.blocking_reader(managed_reader(reader_provider(), None), buf),
-            _hash_function_provider(algorithm))
+            hash_function_provider(algorithm, _actual_updates, _actual_digests))
 
         _consume(reader)
 
@@ -97,7 +98,7 @@ def _writer_provider(reader_provider, buf):
 
         writer = hash_writer(
             blocking_writer(raw_writer(), BytesIO()),
-            _hash_function_provider(algorithm))
+            hash_function_provider(algorithm, _actual_updates, _actual_digests))
 
         _consume(reader, writer)
 
@@ -144,7 +145,7 @@ def test_skip_over(ion_test):
         buf.seek(0)
         reader = hash_reader(
             ion_reader.blocking_reader(managed_reader(_reader_provider("binary")(), None), buf),
-            _hash_function_provider(algorithm))
+            hash_function_provider(algorithm, _actual_updates, _actual_digests))
 
         event = reader.send(NEXT_EVENT)
         while event.event_type != IonEventType.STREAM_END:
@@ -170,9 +171,6 @@ _actual_digests = []
 
 
 def _run_test(ion_test, digester):
-    global _actual_updates
-    global _actual_digests
-
     expect = ion_test['expect']
     for algorithm in expect:
         expected_updates = []
@@ -188,8 +186,8 @@ def _run_test(ion_test, digester):
             elif annot == "final_digest":
                 final_digest = _sexp_to_bytearray(sexp)
 
-        _actual_updates = []
-        _actual_digests = []
+        _actual_updates.clear()
+        _actual_digests.clear()
 
         actual_digest_bytes = digester(algorithm)
 
@@ -220,48 +218,4 @@ def _reader_provider(type):
     return _f
 
 
-def _hash_function_provider(algorithm):
-    def _f():
-        if algorithm == "identity":
-            return _IdentityHash()
-        elif algorithm == "md5":
-            return _MD5Hash()
-    return _f
 
-
-class _IdentityHash:
-    def __init__(self):
-        self._bytes = bytearray()
-
-    def update(self, _bytes):
-        _actual_updates.append(_bytes)
-        self._bytes.extend(_bytes)
-
-    def digest(self):
-        _bytes = self._bytes
-        self._bytes = bytearray()
-        _actual_digests.append(_bytes)
-        return _bytes
-
-
-class _MD5Hash:
-    def __init__(self):
-        self._m = hashlib.md5()
-
-    def update(self, _bytes):
-        self._m.update(_bytes)
-        _actual_updates.append(_bytes)
-
-    def digest(self):
-        digest = self._m.digest()
-        self._m = hashlib.md5()
-        _actual_digests.append(digest)
-        return digest
-
-
-def _hex_string(_bytes):
-    if _bytes is None:
-        return 'None'
-    if isinstance(_bytes, bytes) or isinstance(_bytes, bytearray):
-        return ''.join(' %02x' % x for x in _bytes)
-    return _bytes
