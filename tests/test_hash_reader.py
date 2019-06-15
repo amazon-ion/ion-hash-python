@@ -40,6 +40,7 @@ def _run_test(ion_str, skip_list, algorithm):
     hr = hash_reader(_binary_reader_over(ion_str), hash_function_provider(algorithm))
     hr_events = _consume(hr, skip_list)
 
+    # assert reader/hash_reader response behavior is identical
     assert hr_events == r_events
 
     return hr.send(HashEvent.DIGEST)

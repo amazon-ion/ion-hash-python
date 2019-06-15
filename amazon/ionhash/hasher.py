@@ -84,6 +84,7 @@ def _writer_handler(input, output, hasher, writer, hashing_enabled):
         output = writer.send(input)
         if hashing_enabled:
             _hash_event(hasher, input)
+
     return output
 
 
