@@ -1,4 +1,5 @@
 from functools import cmp_to_key
+import hashlib
 
 from amazon.ion.core import DataEvent
 from amazon.ion.core import IonEvent
@@ -20,6 +21,26 @@ class HashEvent(Enum):
     DISABLE_HASHING = 0
     ENABLE_HASHING = 1
     DIGEST = 2
+
+
+def hashlib_hash_function_provider(algorithm):
+    def _f():
+        return _HashlibHash(algorithm)
+    return _f
+
+
+class _HashlibHash:
+    def __init__(self, algorithm):
+        self._algorithm = algorithm
+        self._hasher = hashlib.new(self._algorithm)
+
+    def update(self, _bytes):
+        self._hasher.update(_bytes)
+
+    def digest(self):
+        digest = self._hasher.digest()
+        self._hasher = hashlib.new(self._algorithm)
+        return digest
 
 
 def hash_reader(reader, hash_function_provider, hashing_enabled=True):
