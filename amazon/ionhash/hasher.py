@@ -24,13 +24,13 @@ class HashEvent(Enum):
 
 def hash_reader(reader, hash_function_provider, hashing_enabled=True):
     hr = _hasher(_reader_handler, reader, hash_function_provider, hashing_enabled)
-    next(hr)
+    next(hr)    # prime the generator
     return hr
 
 
 def hash_writer(writer, hash_function_provider, hashing_enabled=True):
     hw = _hasher(_writer_handler, writer, hash_function_provider, hashing_enabled)
-    next(hw)
+    next(hw)    # prime the generator
     return hw
 
 
@@ -61,11 +61,12 @@ def _hasher(handler, delegate, hash_function_provider, hashing_enabled=True):
 def _reader_handler(input, output, hasher, reader, hashing_enabled):
     if isinstance(input, DataEvent):
         if input == SKIP_EVENT and hashing_enabled:
-            depth = output.depth
+            target_depth = output.depth
+            if output.event_type != IonEventType.CONTAINER_START:
+                target_depth = output.depth - 1
 
             output = reader.send(NEXT_EVENT)
-            print("depth:", depth, output.depth)
-            while output.event_type != IonEventType.STREAM_END and output.depth > depth:
+            while output.event_type != IonEventType.STREAM_END and output.depth > target_depth:
                 _hash_event(hasher, output)
                 output = reader.send(NEXT_EVENT)
 

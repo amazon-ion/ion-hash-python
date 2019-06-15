@@ -18,10 +18,10 @@ def pytest_assertrepr_compare(op, left, right):
         return result
 
 
-def _hex_string(_bytes):
-    if _bytes is None:
+def _hex_string(element):
+    if element is None:
         return 'None'
-    if isinstance(_bytes, bytes) or isinstance(_bytes, bytearray):
-        return ''.join(' %02x' % x for x in _bytes)
-    return _bytes
+    if isinstance(element, bytes) or isinstance(element, bytearray):
+        return ''.join(' %02x' % x for x in element)
+    return element.__repr__()
 
