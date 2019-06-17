@@ -8,6 +8,7 @@ from amazon.ionhash.hasher import hash_writer
 from .util import binary_reader_over
 from .util import consume
 from .util import hash_function_provider
+from .util import hex_string
 
 
 def test_hash_writer():
@@ -23,14 +24,19 @@ def test_hash_writer():
 
 def _run_test(writer_provider, events, algorithm):
     # capture behavior of an ion-python writer
-    w = blocking_writer(writer_provider(), BytesIO())
+    expected_bytes = BytesIO()
+    w = blocking_writer(writer_provider(), expected_bytes)
     expected_write_event_types = _write_to(w, events)
 
-    hw = hash_writer(blocking_writer(writer_provider(), BytesIO()), hash_function_provider(algorithm))
+    hw_bytes = BytesIO()
+    hw = hash_writer(blocking_writer(writer_provider(), hw_bytes), hash_function_provider(algorithm))
     hw_write_event_types = _write_to(hw, events)
 
     # assert writer/hash_writer response behavior is identical
     assert hw_write_event_types == expected_write_event_types
+
+    # assert writer/hash_writer produced the same output
+    assert hw_bytes.getvalue() == expected_bytes.getvalue()
 
 
 def _write_to(w, events):
