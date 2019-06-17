@@ -179,7 +179,7 @@ class _Hasher:
         return self._current_hasher.digest()
 
 
-class _AbstractSerializer:
+class _Serializer:
     def __init__(self, hash_function):
         self.hash_function = hash_function
         self._has_container_annotations = False
@@ -222,14 +222,6 @@ class _AbstractSerializer:
             self._update(_escape(representation))
         self._end_marker()
 
-    def digest(self):
-        return self.hash_function.digest()
-
-
-class _Serializer(_AbstractSerializer):
-    def __init__(self, hash_function):
-        _AbstractSerializer.__init__(self, hash_function)
-
     def scalar(self, ion_event):
         self._handle_annotations_begin(ion_event)
         self._begin_marker()
@@ -251,10 +243,13 @@ class _Serializer(_AbstractSerializer):
         self._end_marker()
         self._handle_annotations_end(is_container=True)
 
+    def digest(self):
+        return self.hash_function.digest()
 
-class _StructSerializer(_AbstractSerializer):
+
+class _StructSerializer(_Serializer):
     def __init__(self, hash_function, hash_function_provider):
-        _AbstractSerializer.__init__(self, hash_function)
+        super().__init__(hash_function)
         self._scalar_serializer = _Serializer(hash_function_provider())
         self._field_hashes = []
 
@@ -264,20 +259,11 @@ class _StructSerializer(_AbstractSerializer):
         digest = self._scalar_serializer.digest()
         self.append_field_hash(_escape(digest))
 
-    def step_in(self, ion_event):
-        self._handle_field_name(ion_event)
-
-        self._handle_annotations_begin(ion_event, is_container=True)
-        self._begin_marker()
-        self._update(bytes([_TQ[IonType.STRUCT]]))
-
     def step_out(self):
         self._field_hashes.sort(key=cmp_to_key(_bytearray_comparator))
         for digest in self._field_hashes:
             self._update(digest)
-
-        self._end_marker()
-        self._handle_annotations_end(is_container=True)
+        super().step_out()
 
     def append_field_hash(self, digest):
         self._field_hashes.append(digest)
