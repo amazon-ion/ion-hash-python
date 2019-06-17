@@ -115,7 +115,7 @@ def _hash_event(hasher, event):
     elif event.event_type is IonEventType.CONTAINER_END:
         hasher.step_out()
     elif event.event_type is not IonEventType.STREAM_END:
-        hasher.update(event)
+        hasher.scalar(event)
 
 
 _BEGIN_MARKER_BYTE = 0x0B
@@ -147,25 +147,21 @@ _TQ = {
 class _Hasher:
     def __init__(self, hash_function_provider):
         self._hash_function_provider = hash_function_provider
-        self._current_hasher = _BaseSerializer(self._hash_function_provider())
+        self._current_hasher = _Serializer(self._hash_function_provider())
         self._hasher_stack = [self._current_hasher]
 
-    def update(self, ion_event):
-        self._current_hasher.update(ion_event)
+    def scalar(self, ion_event):
+        self._current_hasher.scalar(ion_event)
 
     def step_in(self, ion_event):
+        hf = self._current_hasher.hash_function
+        if isinstance(self._current_hasher, _StructSerializer):
+            hf = self._hash_function_provider()
+
         if ion_event.ion_type == IonType.STRUCT:
-            if isinstance(self._current_hasher, StructSerializer):
-                self._current_hasher = StructSerializer(
-                    self._hash_function_provider(), self._hash_function_provider)
-            else:
-                self._current_hasher = StructSerializer(
-                    self._current_hasher.hash_function, self._hash_function_provider)
+            self._current_hasher = _StructSerializer(hf, self._hash_function_provider)
         else:
-            if isinstance(self._current_hasher, StructSerializer):
-                self._current_hasher = _BaseSerializer(self._hash_function_provider())
-            else:
-                self._current_hasher = _BaseSerializer(self._current_hasher.hash_function)
+            self._current_hasher = _Serializer(hf)
 
         self._hasher_stack.append(self._current_hasher)
         self._current_hasher.step_in(ion_event)
@@ -175,7 +171,7 @@ class _Hasher:
         popped_hasher = self._hasher_stack.pop()
         self._current_hasher = self._hasher_stack[-1]
 
-        if isinstance(self._current_hasher, StructSerializer):
+        if isinstance(self._current_hasher, _StructSerializer):
             digest = popped_hasher.digest()
             self._current_hasher.append_field_hash(_escape(digest))
 
@@ -190,73 +186,81 @@ class _AbstractSerializer:
 
     def _handle_field_name(self, ion_event):
         if ion_event.field_name is not None:
-            _write_symbol(self.hash_function, ion_event.field_name)
+            self._write_symbol(ion_event.field_name)
 
     def _handle_annotations_begin(self, ion_event, is_container=False):
         if ion_event.annotations.__len__() > 0:
-            self.hash_function.update(_BEGIN_MARKER)
+            self._begin_marker()
             self.hash_function.update(_TQ_ANNOTATED_VALUE)
             for annotation in ion_event.annotations:
-                _write_symbol(self.hash_function, annotation)
+                self._write_symbol(annotation)
             if is_container:
                 self._has_container_annotations = True
 
     def _handle_annotations_end(self, ion_event = None, is_container=False):
         if (ion_event is not None and ion_event.annotations.__len__() > 0) \
                 or (is_container and self._has_container_annotations):
-            self.hash_function.update(_END_MARKER)
+            self._end_marker()
             if is_container:
                 self._has_container_annotations = False
 
+    def _update(self, _bytes):
+        return self.hash_function.update(_bytes)
 
-class _BaseSerializer(_AbstractSerializer):
+    def _begin_marker(self):
+        return self.hash_function.update(_BEGIN_MARKER)
+
+    def _end_marker(self):
+        return self.hash_function.update(_END_MARKER)
+
+    def _write_symbol(self, token):
+        self._begin_marker()
+        _bytes = _serialize_symbol_token(token)
+        [tq, representation] = _scalar_or_null_split_parts(IonEvent(None, IonType.SYMBOL), _bytes)
+        self._update(bytes([tq]))
+        if representation.__len__() > 0:
+            self._update(_escape(representation))
+        self._end_marker()
+
+    def digest(self):
+        return self.hash_function.digest()
+
+
+class _Serializer(_AbstractSerializer):
     def __init__(self, hash_function):
         _AbstractSerializer.__init__(self, hash_function)
 
-    def update(self, ion_event):
+    def scalar(self, ion_event):
         self._handle_annotations_begin(ion_event)
-        self._write_scalar(ion_event)
+        self._begin_marker()
+        scalar_bytes = _serializer(ion_event)(ion_event)
+        [tq, representation] = _scalar_or_null_split_parts(ion_event, scalar_bytes)
+        self._update(bytes([tq]))
+        if representation.__len__() > 0:
+            self._update(_escape(representation))
+        self._end_marker()
         self._handle_annotations_end(ion_event)
 
     def step_in(self, ion_event):
         self._handle_field_name(ion_event)
         self._handle_annotations_begin(ion_event, is_container=True)
-        self.hash_function.update(_BEGIN_MARKER)
-        self.hash_function.update(bytes([_TQ[ion_event.ion_type]]))
+        self._begin_marker()
+        self._update(bytes([_TQ[ion_event.ion_type]]))
 
     def step_out(self):
-        self.hash_function.update(_END_MARKER)
+        self._end_marker()
         self._handle_annotations_end(is_container=True)
 
-    def digest(self):
-        return self.hash_function.digest()
 
-    def _write_scalar(self, ion_event):
-        self.hash_function.update(_BEGIN_MARKER)
-
-        scalar_bytes = _serializer(ion_event)(ion_event)
-        [tq, representation] = _scalar_or_null_split_parts(ion_event, scalar_bytes)
-        self.hash_function.update(bytes([tq]))
-        if representation.__len__() > 0:
-            self.hash_function.update(_escape(representation))
-
-        self.hash_function.update(_END_MARKER)
-
-
-class StructSerializer(_AbstractSerializer):
+class _StructSerializer(_AbstractSerializer):
     def __init__(self, hash_function, hash_function_provider):
         _AbstractSerializer.__init__(self, hash_function)
-
+        self._scalar_serializer = _Serializer(hash_function_provider())
         self._field_hashes = []
-        self._scalar_serializer = _BaseSerializer(hash_function_provider())
 
-    def update(self, ion_event):
-        # fieldname
+    def scalar(self, ion_event):
         self._scalar_serializer._handle_field_name(ion_event)
-
-        # value
-        self._scalar_serializer.update(ion_event)
-
+        self._scalar_serializer.scalar(ion_event)
         digest = self._scalar_serializer.digest()
         self.append_field_hash(_escape(digest))
 
@@ -264,22 +268,19 @@ class StructSerializer(_AbstractSerializer):
         self._handle_field_name(ion_event)
 
         self._handle_annotations_begin(ion_event, is_container=True)
-        self.hash_function.update(_BEGIN_MARKER)
-        self.hash_function.update(bytes([_TQ[IonType.STRUCT]]))
+        self._begin_marker()
+        self._update(bytes([_TQ[IonType.STRUCT]]))
 
     def step_out(self):
         self._field_hashes.sort(key=cmp_to_key(_bytearray_comparator))
         for digest in self._field_hashes:
-            self.hash_function.update(digest)
+            self._update(digest)
 
-        self.hash_function.update(_END_MARKER)
+        self._end_marker()
         self._handle_annotations_end(is_container=True)
 
     def append_field_hash(self, digest):
         self._field_hashes.append(digest)
-
-    def digest(self):
-        return self.hash_function.digest()
 
 
 def _serialize_null(ion_event):
@@ -307,20 +308,6 @@ def _serialize_symbol_token(token):
         ba.append(_TQ[IonType.SYMBOL])
         ba.extend(bytearray(token.text, encoding="utf-8"))
     return ba
-
-
-_symbol_event = IonEvent(None, IonType.SYMBOL)
-
-
-def _write_symbol(hf, token):
-    hf.update(_BEGIN_MARKER)
-    _bytes = _serialize_symbol_token(token)
-    [tq, representation] = _scalar_or_null_split_parts(_symbol_event, _bytes)
-    hf.update(bytes([tq]))
-    if representation.__len__() > 0:
-        hf.update(_escape(representation))
-
-    hf.update(_END_MARKER)
 
 
 def _serializer(ion_event):
