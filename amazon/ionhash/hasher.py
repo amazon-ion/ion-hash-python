@@ -170,21 +170,13 @@ class _Hasher:
         self._current_hasher.step_in(ion_event)
 
     def step_out(self):
-        _debug("step_out")
         self._current_hasher.step_out()
-
-        if isinstance(self._hasher_stack[-2], StructSerializer):
-            digest = self._current_hasher.digest()
-            _debug("hasher.step_out.digest:", _hex_string(digest))
-            self._hasher_stack[-2]._field_hashes.append(_escape(digest))      # TBD internalize _field_hashes
-            _dump_hashes(self._hasher_stack[-2]._field_hashes, "hasher.step_out.hashes.from_stack")
-
-        self._hasher_stack.pop()
-
+        popped_hasher = self._hasher_stack.pop()
         self._current_hasher = self._hasher_stack[-1]
 
         if isinstance(self._current_hasher, StructSerializer):
-            _dump_hashes(self._current_hasher._field_hashes, "hasher.step_out.hashes")
+            digest = popped_hasher.digest()
+            self._current_hasher.append_hash(_escape(digest))
 
     def digest(self):
         return self._hash_function.digest()
@@ -282,7 +274,6 @@ class StructSerializer(_BaseSerializer):
         self._parent_hash_function.update(_BEGIN_MARKER)
         self._parent_hash_function.update(bytes([_TQ[IonType.STRUCT]]))
 
-
     def step_out(self):
         _dump_hashes(self._field_hashes, "struct.step_out")
 
@@ -292,6 +283,9 @@ class StructSerializer(_BaseSerializer):
 
         self._parent_hash_function.update(_END_MARKER)
         self._handle_annotations_end(self._parent_hash_function, is_container=True)
+
+    def append_hash(self, digest):
+        self._field_hashes.append(digest)
 
     def digest(self):
         return self._parent_hash_function.digest()
