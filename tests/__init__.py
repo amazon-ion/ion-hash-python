@@ -3,13 +3,13 @@ from amazon.ion.simple_types import _ion_type_for
 from collections import OrderedDict
 
 
-# ion-python's IonPyDict shuffles the order of struct fields,
-# which causes failures when verifying the expected digests
-# for some struct tests in ion_hash_tests.ion.
-#
-# installing this custom implementation maintains the order
-# and thus allows the tests to pass
 class _CustomOrderedDict(OrderedDict):
+    """ion-python's IonPyDict may shuffle the order of struct fields,
+    which causes failures when verifying the expected digests
+    for some struct tests in ion_hash_tests.ion.
+
+    Installing this custom implementation maintains the order
+    and thus allows the tests to pass."""
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 

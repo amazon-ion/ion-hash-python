@@ -1,3 +1,6 @@
+"""Provides readers/writers that hash Ion values according to the Ion Hash Specification."""
+
+from abc import ABC, abstractmethod
 from functools import cmp_to_key
 import hashlib
 
@@ -18,18 +21,44 @@ from amazon.ion.writer_binary_raw import _serialize_timestamp
 
 
 class HashEvent(Enum):
+    """Events that may be pushed into a hash_reader or hash_writer coroutine,
+    in addition to those allowed by the wrapped reader/writer.
+
+    Attributes:
+        DISABLE_HASHING:  turns hashing off
+        ENABLE_HASHING:  turns hashing on
+        DIGEST:  produces `bytes` that represents the hash of the Ion values
+            read/written while hashing was enabled
+    """
     DISABLE_HASHING = 0
     ENABLE_HASHING = 1
     DIGEST = 2
 
 
 def hashlib_hash_function_provider(algorithm):
+    """A hash function provider based on hashlib."""
     def _f():
         return _HashlibHash(algorithm)
     return _f
 
 
-class _HashlibHash:
+class IonHasher(ABC):
+    """Abstract class declaring the hashing methods that must be implemented in order to
+    support a hash function for use by `hash_reader` or `hash_writer`."""
+    @abstractmethod
+    def update(self, _bytes):
+        """Updates the hash function with the specified _bytes."""
+        pass
+
+    @abstractmethod
+    def digest(self):
+        """Returns a digest of the accumulated bytes passed to `update`, and resets the `IonHasher`
+        to its initial state."""
+        pass
+
+
+class _HashlibHash(IonHasher):
+    """Implements the expected hash function methods for the specified algorithm using hashlib."""
     def __init__(self, algorithm):
         self._algorithm = algorithm
         self._hasher = hashlib.new(self._algorithm)
@@ -44,18 +73,58 @@ class _HashlibHash:
 
 
 def hash_reader(reader, hash_function_provider, hashing_enabled=True):
+    """Provides a coroutine that wraps an ion-python reader and adds Ion Hash functionality.
+
+    The given coroutine yields `bytes` when given ``HashEvent.DIGEST``, and `None` when
+    given ``HashEvent.DISABLE_HASHING`` or ``HashEvent.ENABLE_HASHING``.  Otherwise, the
+    couroutine's behavior matches that of the wrapped reader.
+
+    Notes:
+        While hashing is enabled, the coroutine translates any `SKIP_EVENT`s into a series
+        of `NEXT_EVENT`s in order to ensure that the hash correctly includes any subsequent
+        or nested values.
+
+    Args:
+        reader(couroutine):  An ion-python reader coroutine.
+        hash_function_provider(function):  A function that returns a function that produces
+            ``IonHasher`` instances when called.  Note that multiple ``IonHasher`` instances
+            may be required to hash a single value (depending on the type of the Ion value).
+        hashing_enabled(Optional[bool]):  Indicates whether hashing is initially enabled.
+
+    Yields:
+        bytes:  The result of hashing.
+        other values:  As defined by the provided reader coroutine.
+    """
     hr = _hasher(_hash_reader_handler, reader, hash_function_provider, hashing_enabled)
-    next(hr)    # prime the generator
+    next(hr)    # prime the coroutine
     return hr
 
 
 def hash_writer(writer, hash_function_provider, hashing_enabled=True):
+    """Provides a coroutine that wraps an ion-python writer and adds Ion Hash functioality.
+
+    The given coroutine yields `bytes` when given ``HashEvent.DIGEST``, and `None` when
+    given ``HashEvent.DISABLE_HASHING`` or ``HashEvent.ENABLE_HASHING``.  Otherwise, the
+    couroutine's behavior matches that of the wrapped writer.
+
+    Args:
+        writer(coroutine):  An ion-python writer coroutine.
+        hash_function_provider(function):  A function that returns a function that produces
+            ``IonHasher`` instances when called.  Note that multiple ``IonHasher`` instances
+            may be required to hash a single value (depending on the type of the Ion value).
+        hashing_enabled(Optional[bool]):  Indicates whether hashing is initially enabled.
+
+    Yields:
+        bytes:  The result of hashing.
+        other values:  As defined by the provided writer coroutine.
+    """
     hw = _hasher(_hash_writer_handler, writer, hash_function_provider, hashing_enabled)
-    next(hw)    # prime the generator
+    next(hw)    # prime the coroutine
     return hw
 
 
 def _hasher(handler, delegate, hash_function_provider, hashing_enabled=True):
+    """Provides a coroutine that wraps an ion-python reader or writer and adds Ion Hash functionality."""
     hasher = _Hasher(hash_function_provider)
     output = None
     while True:
@@ -80,8 +149,11 @@ def _hasher(handler, delegate, hash_function_provider, hashing_enabled=True):
 
 
 def _hash_reader_handler(input, output, hasher, reader, hashing_enabled):
+    """Handles input to a reader-based coroutine."""
     if isinstance(input, DataEvent):
         if input == SKIP_EVENT and hashing_enabled:
+            # if hashing is enabled, translate SKIP_EVENTs into the appropriate number
+            # of NEXT_EVENTs to ensure hash correctness:
             target_depth = output.depth
             if output.event_type != IonEventType.CONTAINER_START:
                 target_depth = output.depth - 1
@@ -101,6 +173,7 @@ def _hash_reader_handler(input, output, hasher, reader, hashing_enabled):
 
 
 def _hash_writer_handler(input, output, hasher, writer, hashing_enabled):
+    """Handles input to a writer-based coroutine."""
     if isinstance(input, IonEvent):
         output = writer.send(input)
         if hashing_enabled:
@@ -110,6 +183,7 @@ def _hash_writer_handler(input, output, hasher, writer, hashing_enabled):
 
 
 def _hash_event(hasher, event):
+    """Maps an IonEvent to the appropriate hasher method."""
     if event.event_type is IonEventType.CONTAINER_START:
         hasher.step_in(event)
     elif event.event_type is IonEventType.CONTAINER_END:
@@ -118,15 +192,14 @@ def _hash_event(hasher, event):
         hasher.scalar(event)
 
 
+# Ion Hash special bytes:
 _BEGIN_MARKER_BYTE = 0x0B
 _END_MARKER_BYTE = 0x0E
 _ESCAPE_BYTE = 0x0C
-_BEGIN_MARKER = b'\x0B'
-_END_MARKER = b'\x0E'
+_BEGIN_MARKER = bytes([_BEGIN_MARKER_BYTE])
+_END_MARKER = bytes([_END_MARKER_BYTE])
 
-_TQ_SYMBOL_SID0 = 0x71
-_TQ_ANNOTATED_VALUE = b'\xE0'
-
+# Type/Qualifier byte for each Ion type:
 _TQ = {
     IonType.NULL:      0x0F,
     IonType.BOOL:      0x10,
@@ -142,9 +215,16 @@ _TQ = {
     IonType.SEXP:      0xC0,
     IonType.STRUCT:    0xD0,
 }
+_TQ_SYMBOL_SID0 = 0x71
+_TQ_ANNOTATED_VALUE = bytes([0xE0])
 
 
 class _Hasher:
+    """Primary driver of the Ion hash algorithm.
+
+    This class maintains a stack of serializers corresponding to the nesting of Ion data
+    being hashed.
+    """
     def __init__(self, hash_function_provider):
         self._hash_function_provider = hash_function_provider
         self._current_hasher = _Serializer(self._hash_function_provider())
@@ -180,6 +260,7 @@ class _Hasher:
 
 
 class _Serializer:
+    """Serialization/hashing logic for all Ion types except struct."""
     def __init__(self, hash_function):
         self.hash_function = hash_function
         self._has_container_annotations = False
@@ -248,6 +329,7 @@ class _Serializer:
 
 
 class _StructSerializer(_Serializer):
+    """Serialization/hashing logic for Ion structs."""
     def __init__(self, hash_function, hash_function_provider):
         super().__init__(hash_function)
         self._scalar_serializer = _Serializer(hash_function_provider())
@@ -268,6 +350,10 @@ class _StructSerializer(_Serializer):
     def append_field_hash(self, digest):
         self._field_hashes.append(digest)
 
+
+#
+# Serialization functions for scalar types:
+#
 
 def _serialize_null(ion_event):
     ba = bytearray()
@@ -316,8 +402,8 @@ _UPDATE_SCALAR_HASH_BYTES_JUMP_TABLE = {
 }
 
 
-# split scalar bytes into TQ and representation; also handles any special case binary cleanup
 def _scalar_or_null_split_parts(ion_event, _bytes):
+    """Splits scalar bytes into TQ and representation; also handles any special case binary cleanup."""
     offset = 1 + _get_length_length(_bytes)
 
     # the representation is everything after TL (first byte) and length
@@ -332,8 +418,8 @@ def _scalar_or_null_split_parts(ion_event, _bytes):
     return [tq, representation]
 
 
-# returns a count of bytes in the "length" field
 def _get_length_length(_bytes):
+    """Returns a count of bytes in an Ion value's `length` field."""
     if (_bytes[0] & 0x0F) == 0x0E:
         # read subsequent byte(s) as the "length" field
         for i in range(1, len(_bytes)):
@@ -344,6 +430,7 @@ def _get_length_length(_bytes):
 
 
 def _bytearray_comparator(a, b):
+    """Implements a comparator using the lexicographical ordering of octets as unsigned integers."""
     a_len = a.__len__()
     b_len = b.__len__()
     i = 0
@@ -367,6 +454,10 @@ def _bytearray_comparator(a, b):
 
 
 def _escape(_bytes):
+    """If _bytes contains one or more BEGIN_MARKER_BYTEs, END_MARKER_BYTEs, or ESCAPE_BYTEs,
+    returns a new bytearray with such bytes preceeded by a ESCAPE_BYTE;  otherwise, returns
+    the original _bytes unchanged."
+    """
     for b in _bytes:
         if b == _BEGIN_MARKER_BYTE or b == _END_MARKER_BYTE or b == _ESCAPE_BYTE:
             # found a byte that needs to be escaped;  build a new byte array that

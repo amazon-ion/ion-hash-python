@@ -8,6 +8,7 @@ from amazon.ion.reader_managed import managed_reader
 from amazon.ion.reader_binary import binary_reader
 from amazon.ion.reader import NEXT_EVENT
 from amazon.ion.reader import SKIP_EVENT
+from amazon.ionhash.hasher import IonHasher
 
 
 def hash_function_provider(algorithm, updates=[], digests=[]):
@@ -19,7 +20,7 @@ def hash_function_provider(algorithm, updates=[], digests=[]):
     return _f
 
 
-class _IdentityHash:
+class _IdentityHash(IonHasher):
     def __init__(self, updates, digests):
         self._bytes = bytearray()
         self._updates = updates
@@ -36,7 +37,7 @@ class _IdentityHash:
         return _bytes
 
 
-class _MD5Hash:
+class _MD5Hash(IonHasher):
     def __init__(self, updates, digests):
         self._m = hashlib.md5()
         self._updates = updates
