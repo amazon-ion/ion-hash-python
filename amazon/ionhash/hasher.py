@@ -44,13 +44,13 @@ class _HashlibHash:
 
 
 def hash_reader(reader, hash_function_provider, hashing_enabled=True):
-    hr = _hasher(_reader_handler, reader, hash_function_provider, hashing_enabled)
+    hr = _hasher(_hash_reader_handler, reader, hash_function_provider, hashing_enabled)
     next(hr)    # prime the generator
     return hr
 
 
 def hash_writer(writer, hash_function_provider, hashing_enabled=True):
-    hw = _hasher(_writer_handler, writer, hash_function_provider, hashing_enabled)
+    hw = _hasher(_hash_writer_handler, writer, hash_function_provider, hashing_enabled)
     next(hw)    # prime the generator
     return hw
 
@@ -79,7 +79,7 @@ def _hasher(handler, delegate, hash_function_provider, hashing_enabled=True):
             output = handler(input, output, hasher, delegate, hashing_enabled)
 
 
-def _reader_handler(input, output, hasher, reader, hashing_enabled):
+def _hash_reader_handler(input, output, hasher, reader, hashing_enabled):
     if isinstance(input, DataEvent):
         if input == SKIP_EVENT and hashing_enabled:
             target_depth = output.depth
@@ -100,7 +100,7 @@ def _reader_handler(input, output, hasher, reader, hashing_enabled):
     return output
 
 
-def _writer_handler(input, output, hasher, writer, hashing_enabled):
+def _hash_writer_handler(input, output, hasher, writer, hashing_enabled):
     if isinstance(input, IonEvent):
         output = writer.send(input)
         if hashing_enabled:
@@ -157,7 +157,12 @@ class _Hasher:
     def step_in(self, ion_event):
         _debug(ion_event)
         if ion_event.ion_type == IonType.STRUCT:
-            self._current_hasher = StructSerializer(self._current_hasher.hash_function, self._hash_function_provider)
+            if isinstance(self._current_hasher, StructSerializer):
+                self._current_hasher = StructSerializer(
+                    self._hash_function_provider(), self._hash_function_provider)
+            else:
+                self._current_hasher = StructSerializer(
+                    self._current_hasher.hash_function, self._hash_function_provider)
         else:
             if isinstance(self._current_hasher, StructSerializer):
                 self._current_hasher = _BaseSerializer(self._hash_function_provider())
@@ -185,23 +190,23 @@ class _AbstractSerializer:
         self.hash_function = hash_function
         self._has_container_annotations = False
 
-    def _handle_field_name(self, hf, ion_event):
+    def _handle_field_name(self, ion_event):
         if ion_event.field_name is not None:
-            _write_symbol(hf, ion_event.field_name)
+            _write_symbol(self.hash_function, ion_event.field_name)
 
-    def _handle_annotations_begin(self, hf, ion_event, is_container=False):
+    def _handle_annotations_begin(self, ion_event, is_container=False):
         if ion_event.annotations.__len__() > 0:
-            hf.update(_BEGIN_MARKER)
-            hf.update(_TQ_ANNOTATED_VALUE)
+            self.hash_function.update(_BEGIN_MARKER)
+            self.hash_function.update(_TQ_ANNOTATED_VALUE)
             for annotation in ion_event.annotations:
-                _write_symbol(hf, annotation)
+                _write_symbol(self.hash_function, annotation)
             if is_container:
                 self._has_container_annotations = True
 
-    def _handle_annotations_end(self, hf, ion_event = None, is_container=False):
+    def _handle_annotations_end(self, ion_event = None, is_container=False):
         if (ion_event is not None and ion_event.annotations.__len__() > 0) \
                 or (is_container and self._has_container_annotations):
-            hf.update(_END_MARKER)
+            self.hash_function.update(_END_MARKER)
             if is_container:
                 self._has_container_annotations = False
 
@@ -212,81 +217,79 @@ class _BaseSerializer(_AbstractSerializer):
 
     def update(self, ion_event):
         _debug("base.update")
-        self._handle_annotations_begin(self.hash_function, ion_event)
-        self._write_scalar(self.hash_function, ion_event)
-        self._handle_annotations_end(self.hash_function, ion_event)
+        self._handle_annotations_begin(ion_event)
+        self._write_scalar(ion_event)
+        self._handle_annotations_end(ion_event)
 
     def step_in(self, ion_event):
         _debug("base.step_in")
-        self._handle_field_name(self.hash_function, ion_event)
-        self._handle_annotations_begin(self.hash_function, ion_event, is_container=True)
+        self._handle_field_name(ion_event)
+        self._handle_annotations_begin(ion_event, is_container=True)
         self.hash_function.update(_BEGIN_MARKER)
         self.hash_function.update(bytes([_TQ[ion_event.ion_type]]))
 
     def step_out(self):
         _debug("base.step_out")
         self.hash_function.update(_END_MARKER)
-        self._handle_annotations_end(self.hash_function, is_container=True)
+        self._handle_annotations_end(is_container=True)
 
     def digest(self):
         return self.hash_function.digest()
 
-    def _write_scalar(self, hf, ion_event):
-        hf.update(_BEGIN_MARKER)
+    def _write_scalar(self, ion_event):
+        self.hash_function.update(_BEGIN_MARKER)
 
         scalar_bytes = _serializer(ion_event)(ion_event)
         [tq, representation] = _scalar_or_null_split_parts(ion_event, scalar_bytes)
-        hf.update(bytes([tq]))
+        self.hash_function.update(bytes([tq]))
         if representation.__len__() > 0:
-            hf.update(_escape(representation))
+            self.hash_function.update(_escape(representation))
 
-        hf.update(_END_MARKER)
+        self.hash_function.update(_END_MARKER)
 
 
-# TBD refactor to extend an _AbstractSerializer class?
-class StructSerializer(_BaseSerializer):
-    def __init__(self, parent_hash_function, hash_function_provider):
-        self._parent_hash_function = parent_hash_function
-        _BaseSerializer.__init__(self, hash_function_provider())
+class StructSerializer(_AbstractSerializer):
+    def __init__(self, hash_function, hash_function_provider):
+        _AbstractSerializer.__init__(self, hash_function)
 
         self._field_hashes = []
         self._scalar_serializer = _BaseSerializer(hash_function_provider())
 
     def update(self, ion_event):
         # fieldname
-        self._handle_field_name(self._scalar_serializer.hash_function, ion_event)
+        self._scalar_serializer._handle_field_name(ion_event)
 
         # value
         self._scalar_serializer.update(ion_event)
 
         digest = self._scalar_serializer.digest()
-        self._field_hashes.append(_escape(digest))
+        self.append_field_hash(_escape(digest))
         _dump_hashes(self._field_hashes, "struct.update")
 
     def step_in(self, ion_event):
         _dump_hashes(self._field_hashes, "struct.step_in")
 
-        self._handle_field_name(self._parent_hash_function, ion_event)
+        self._handle_field_name(ion_event)
 
-        self._handle_annotations_begin(self._parent_hash_function, ion_event, is_container=True)
-        self._parent_hash_function.update(_BEGIN_MARKER)
-        self._parent_hash_function.update(bytes([_TQ[IonType.STRUCT]]))
+        self._handle_annotations_begin(ion_event, is_container=True)
+        self.hash_function.update(_BEGIN_MARKER)
+        self.hash_function.update(bytes([_TQ[IonType.STRUCT]]))
 
     def step_out(self):
         _dump_hashes(self._field_hashes, "struct.step_out")
 
         self._field_hashes.sort(key=cmp_to_key(_bytearray_comparator))
         for digest in self._field_hashes:
-            self._parent_hash_function.update(digest)
+            self.hash_function.update(digest)
 
-        self._parent_hash_function.update(_END_MARKER)
-        self._handle_annotations_end(self._parent_hash_function, is_container=True)
+        self.hash_function.update(_END_MARKER)
+        self._handle_annotations_end(is_container=True)
 
     def append_field_hash(self, digest):
         self._field_hashes.append(digest)
 
     def digest(self):
-        return self._parent_hash_function.digest()
+        return self.hash_function.digest()
 
 
 def _serialize_null(ion_event):
