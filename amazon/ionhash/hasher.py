@@ -151,11 +151,9 @@ class _Hasher:
         self._hasher_stack = [self._current_hasher]
 
     def update(self, ion_event):
-        _debug(ion_event)
         self._current_hasher.update(ion_event)
 
     def step_in(self, ion_event):
-        _debug(ion_event)
         if ion_event.ion_type == IonType.STRUCT:
             if isinstance(self._current_hasher, StructSerializer):
                 self._current_hasher = StructSerializer(
@@ -216,20 +214,17 @@ class _BaseSerializer(_AbstractSerializer):
         _AbstractSerializer.__init__(self, hash_function)
 
     def update(self, ion_event):
-        _debug("base.update")
         self._handle_annotations_begin(ion_event)
         self._write_scalar(ion_event)
         self._handle_annotations_end(ion_event)
 
     def step_in(self, ion_event):
-        _debug("base.step_in")
         self._handle_field_name(ion_event)
         self._handle_annotations_begin(ion_event, is_container=True)
         self.hash_function.update(_BEGIN_MARKER)
         self.hash_function.update(bytes([_TQ[ion_event.ion_type]]))
 
     def step_out(self):
-        _debug("base.step_out")
         self.hash_function.update(_END_MARKER)
         self._handle_annotations_end(is_container=True)
 
@@ -264,11 +259,8 @@ class StructSerializer(_AbstractSerializer):
 
         digest = self._scalar_serializer.digest()
         self.append_field_hash(_escape(digest))
-        _dump_hashes(self._field_hashes, "struct.update")
 
     def step_in(self, ion_event):
-        _dump_hashes(self._field_hashes, "struct.step_in")
-
         self._handle_field_name(ion_event)
 
         self._handle_annotations_begin(ion_event, is_container=True)
@@ -276,8 +268,6 @@ class StructSerializer(_AbstractSerializer):
         self.hash_function.update(bytes([_TQ[IonType.STRUCT]]))
 
     def step_out(self):
-        _dump_hashes(self._field_hashes, "struct.step_out")
-
         self._field_hashes.sort(key=cmp_to_key(_bytearray_comparator))
         for digest in self._field_hashes:
             self.hash_function.update(digest)
@@ -417,27 +407,4 @@ def _escape(_bytes):
 
     # no escaping needed, return the original _bytes
     return _bytes
-
-
-_debug_flag = 0
-
-
-def _debug(*args):
-    if _debug_flag > 0:
-        for arg in args:
-            print(arg,)
-        print
-
-
-def _hex_string(_bytes):
-    if _bytes is None:
-        return 'None'
-    if isinstance(_bytes, bytes) or isinstance(_bytes, bytearray):
-        return ''.join(' %02x' % x for x in _bytes)
-    return _bytes
-
-
-def _dump_hashes(hashes, id):
-    if _debug_flag > 0:
-        _debug("hashes:", id, ''.join(' {},'.format(_hex_string(h)) for h in hashes))
 
