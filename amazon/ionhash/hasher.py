@@ -25,14 +25,9 @@ class HashEvent(Enum):
     in addition to those allowed by the wrapped reader/writer.
 
     Attributes:
-        DISABLE_HASHING:  turns hashing off
-        ENABLE_HASHING:  turns hashing on
-        DIGEST:  produces `bytes` that represents the hash of the Ion values
-            read/written while hashing was enabled
+        DIGEST:  produces `bytes` that represents the hash of the Ion values read/written
     """
-    DISABLE_HASHING = 0
-    ENABLE_HASHING = 1
-    DIGEST = 2
+    DIGEST = 0
 
 
 def hashlib_hash_function_provider(algorithm):
@@ -72,39 +67,35 @@ class _HashlibHash(IonHasher):
         return digest
 
 
-def hash_reader(reader, hash_function_provider, hashing_enabled=True):
+def hash_reader(reader, hash_function_provider):
     """Provides a coroutine that wraps an ion-python reader and adds Ion Hash functionality.
 
-    The given coroutine yields `bytes` when given ``HashEvent.DIGEST``, and `None` when
-    given ``HashEvent.DISABLE_HASHING`` or ``HashEvent.ENABLE_HASHING``.  Otherwise, the
+    The given coroutine yields `bytes` when given ``HashEvent.DIGEST``.  Otherwise, the
     couroutine's behavior matches that of the wrapped reader.
 
     Notes:
-        While hashing is enabled, the coroutine translates any `SKIP_EVENT`s into a series
-        of `NEXT_EVENT`s in order to ensure that the hash correctly includes any subsequent
-        or nested values.
+        The coroutine translates any `SKIP_EVENT`s into a series of `NEXT_EVENT`s in order
+        to ensure that the hash correctly includes any subsequent or nested values.
 
     Args:
         reader(couroutine):  An ion-python reader coroutine.
         hash_function_provider(function):  A function that returns a function that produces
             ``IonHasher`` instances when called.  Note that multiple ``IonHasher`` instances
             may be required to hash a single value (depending on the type of the Ion value).
-        hashing_enabled(Optional[bool]):  Indicates whether hashing is initially enabled.
 
     Yields:
         bytes:  The result of hashing.
         other values:  As defined by the provided reader coroutine.
     """
-    hr = _hasher(_hash_reader_handler, reader, hash_function_provider, hashing_enabled)
+    hr = _hasher(_hash_reader_handler, reader, hash_function_provider)
     next(hr)    # prime the coroutine
     return hr
 
 
-def hash_writer(writer, hash_function_provider, hashing_enabled=True):
+def hash_writer(writer, hash_function_provider):
     """Provides a coroutine that wraps an ion-python writer and adds Ion Hash functioality.
 
-    The given coroutine yields `bytes` when given ``HashEvent.DIGEST``, and `None` when
-    given ``HashEvent.DISABLE_HASHING`` or ``HashEvent.ENABLE_HASHING``.  Otherwise, the
+    The given coroutine yields `bytes` when given ``HashEvent.DIGEST``.  Otherwise, the
     couroutine's behavior matches that of the wrapped writer.
 
     Args:
@@ -112,46 +103,37 @@ def hash_writer(writer, hash_function_provider, hashing_enabled=True):
         hash_function_provider(function):  A function that returns a function that produces
             ``IonHasher`` instances when called.  Note that multiple ``IonHasher`` instances
             may be required to hash a single value (depending on the type of the Ion value).
-        hashing_enabled(Optional[bool]):  Indicates whether hashing is initially enabled.
 
     Yields:
         bytes:  The result of hashing.
         other values:  As defined by the provided writer coroutine.
     """
-    hw = _hasher(_hash_writer_handler, writer, hash_function_provider, hashing_enabled)
+    hw = _hasher(_hash_writer_handler, writer, hash_function_provider)
     next(hw)    # prime the coroutine
     return hw
 
 
-def _hasher(handler, delegate, hash_function_provider, hashing_enabled=True):
+def _hasher(handler, delegate, hash_function_provider):
     """Provides a coroutine that wraps an ion-python reader or writer and adds Ion Hash functionality."""
     hasher = _Hasher(hash_function_provider)
     output = None
+    input = yield output
     while True:
-        input = yield output
-        output = handler(input, output, hasher, delegate, hashing_enabled)
-        while output is not None:
-            if isinstance(input, HashEvent):
-                if input == HashEvent.DISABLE_HASHING:
-                    hashing_enabled = False
-                    input = yield
-
-                elif input == HashEvent.ENABLE_HASHING:
-                    hashing_enabled = True
-                    input = yield
-
-                elif input == HashEvent.DIGEST:
-                    input = yield hasher.digest()
-            else:
-                input = yield output
-                output = handler(input, output, hasher, delegate, hashing_enabled)
+        if isinstance(input, HashEvent):
+            if input == HashEvent.DIGEST:
+                input = yield hasher.digest()
+        else:
+            output = handler(input, output, hasher, delegate)
+            if output is None:
+                break
+            input = yield output
 
 
-def _hash_reader_handler(input, output, hasher, reader, hashing_enabled):
+def _hash_reader_handler(input, output, hasher, reader):
     """Handles input to a reader-based coroutine."""
     if isinstance(input, DataEvent):
-        if input == SKIP_EVENT and hashing_enabled:
-            # if hashing is enabled, translate SKIP_EVENTs into the appropriate number
+        if input == SKIP_EVENT:
+            # translate SKIP_EVENTs into the appropriate number
             # of NEXT_EVENTs to ensure hash correctness:
             target_depth = output.depth
             if output.event_type != IonEventType.CONTAINER_START:
@@ -165,18 +147,17 @@ def _hash_reader_handler(input, output, hasher, reader, hashing_enabled):
         else:
             output = reader.send(input)
 
-    if isinstance(output, IonEvent) and hashing_enabled:
+    if isinstance(output, IonEvent):
         _hash_event(hasher, output)
 
     return output
 
 
-def _hash_writer_handler(input, output, hasher, writer, hashing_enabled):
+def _hash_writer_handler(input, output, hasher, writer):
     """Handles input to a writer-based coroutine."""
     if isinstance(input, IonEvent):
         output = writer.send(input)
-        if hashing_enabled:
-            _hash_event(hasher, input)
+        _hash_event(hasher, input)
 
     return output
 
