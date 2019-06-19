@@ -131,21 +131,20 @@ def _hasher(handler, delegate, hash_function_provider, hashing_enabled=True):
         input = yield output
         output = handler(input, output, hasher, delegate, hashing_enabled)
         while output is not None:
-            if input == HashEvent.DISABLE_HASHING:
-                hashing_enabled = False
-                input = yield
+            if isinstance(input, HashEvent):
+                if input == HashEvent.DISABLE_HASHING:
+                    hashing_enabled = False
+                    input = yield
 
-            elif input == HashEvent.ENABLE_HASHING:
-                hashing_enabled = True
-                input = yield
+                elif input == HashEvent.ENABLE_HASHING:
+                    hashing_enabled = True
+                    input = yield
 
-            elif input == HashEvent.DIGEST:
-                input = yield hasher.digest()
-
+                elif input == HashEvent.DIGEST:
+                    input = yield hasher.digest()
             else:
                 input = yield output
-
-            output = handler(input, output, hasher, delegate, hashing_enabled)
+                output = handler(input, output, hasher, delegate, hashing_enabled)
 
 
 def _hash_reader_handler(input, output, hasher, reader, hashing_enabled):
@@ -227,7 +226,7 @@ class _Hasher:
     """
     def __init__(self, hash_function_provider):
         self._hash_function_provider = hash_function_provider
-        self._current_hasher = _Serializer(self._hash_function_provider())
+        self._current_hasher = _Serializer(self._hash_function_provider(), 0)
         self._hasher_stack = [self._current_hasher]
 
     def scalar(self, ion_event):
@@ -239,9 +238,9 @@ class _Hasher:
             hf = self._hash_function_provider()
 
         if ion_event.ion_type == IonType.STRUCT:
-            self._current_hasher = _StructSerializer(hf, self._hash_function_provider)
+            self._current_hasher = _StructSerializer(hf, self._depth(), self._hash_function_provider)
         else:
-            self._current_hasher = _Serializer(hf)
+            self._current_hasher = _Serializer(hf, self._depth())
 
         self._hasher_stack.append(self._current_hasher)
         self._current_hasher.step_in(ion_event)
@@ -258,15 +257,19 @@ class _Hasher:
     def digest(self):
         return self._current_hasher.digest()
 
+    def _depth(self):
+        return self._hasher_stack.__len__() - 1
+
 
 class _Serializer:
     """Serialization/hashing logic for all Ion types except struct."""
-    def __init__(self, hash_function):
+    def __init__(self, hash_function, depth):
         self.hash_function = hash_function
         self._has_container_annotations = False
+        self._depth = depth
 
     def _handle_field_name(self, ion_event):
-        if ion_event.field_name is not None:
+        if ion_event.field_name is not None and self._depth > 0:
             self._write_symbol(ion_event.field_name)
 
     def _handle_annotations_begin(self, ion_event, is_container=False):
@@ -330,9 +333,9 @@ class _Serializer:
 
 class _StructSerializer(_Serializer):
     """Serialization/hashing logic for Ion structs."""
-    def __init__(self, hash_function, hash_function_provider):
-        super().__init__(hash_function)
-        self._scalar_serializer = _Serializer(hash_function_provider())
+    def __init__(self, hash_function, depth, hash_function_provider):
+        super().__init__(hash_function, depth)
+        self._scalar_serializer = _Serializer(hash_function_provider(), depth + 1)
         self._field_hashes = []
 
     def scalar(self, ion_event):
