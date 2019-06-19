@@ -20,6 +20,7 @@ from amazon.ionhash.hasher import hash_writer
 from amazon.ionhash.hasher import HashEvent
 
 from .util import hash_function_provider
+from .util import sexp_to_bytearray
 
 
 def _test_data(algorithm):
@@ -179,12 +180,12 @@ def _run_test(ion_test, digester):
         for sexp in expect[algorithm]:
             annot = sexp.ion_annotations[0].text
             if annot == "update":
-                expected_updates.append(_sexp_to_bytearray(sexp))
+                expected_updates.append(sexp_to_bytearray(sexp))
                 pass
             elif annot == "digest":
-                expected_digests.append(_sexp_to_bytearray(sexp))
+                expected_digests.append(sexp_to_bytearray(sexp))
             elif annot == "final_digest":
-                final_digest = _sexp_to_bytearray(sexp)
+                final_digest = sexp_to_bytearray(sexp)
 
         _actual_updates.clear()
         _actual_digests.clear()
@@ -200,13 +201,6 @@ def _run_test(ion_test, digester):
         else:
             assert _actual_digests == expected_digests
             assert actual_digest_bytes == expected_digests[-1]
-
-
-def _sexp_to_bytearray(sexp):
-    ba = bytearray()
-    for b in sexp:
-        ba.append(b)
-    return ba
 
 
 def _reader_provider(type):

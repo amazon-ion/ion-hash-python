@@ -54,6 +54,13 @@ class _MD5Hash(IonHasher):
         return digest
 
 
+def sexp_to_bytearray(sexp):
+    ba = bytearray()
+    for b in sexp:
+        ba.append(b)
+    return ba
+
+
 def hex_string(obj):
     if obj is None:
         return 'None'
