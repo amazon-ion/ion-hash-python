@@ -227,6 +227,8 @@ class _Hasher:
         self._current_hasher.step_in(ion_event)
 
     def step_out(self):
+        if self._depth() == 0:
+            raise Exception("Hasher cannot step_out any further")
         self._current_hasher.step_out()
         popped_hasher = self._hasher_stack.pop()
         self._current_hasher = self._hasher_stack[-1]
@@ -236,6 +238,8 @@ class _Hasher:
             self._current_hasher.append_field_hash(_escape(digest))
 
     def digest(self):
+        if self._depth() != 0:
+            raise Exception("A digest may only be provided at the same depth hashing started")
         return self._current_hasher.digest()
 
     def _depth(self):
