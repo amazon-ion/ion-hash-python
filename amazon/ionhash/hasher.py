@@ -235,7 +235,7 @@ class _Hasher:
 
         if isinstance(self._current_hasher, _StructSerializer):
             digest = popped_hasher.digest()
-            self._current_hasher.append_field_hash(_escape(digest))
+            self._current_hasher.append_field_hash(digest)
 
     def digest(self):
         if self._depth() != 0:
@@ -327,12 +327,12 @@ class _StructSerializer(_Serializer):
         self._scalar_serializer._handle_field_name(ion_event)
         self._scalar_serializer.scalar(ion_event)
         digest = self._scalar_serializer.digest()
-        self.append_field_hash(_escape(digest))
+        self.append_field_hash(digest)
 
     def step_out(self):
         self._field_hashes.sort(key=cmp_to_key(_bytearray_comparator))
         for digest in self._field_hashes:
-            self._update(digest)
+            self._update(_escape(digest))
         super().step_out()
 
     def append_field_hash(self, digest):
