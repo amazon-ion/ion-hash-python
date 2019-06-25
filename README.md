@@ -1,7 +1,94 @@
-## Ion Hash Python
+# Amazon Ion Hash Python
+An implementation of [Amazon Ion Hash](http://amzn.github.io/ion-hash) in Python.
 
-A Python implementation of the Ion Hash Specification
+[![Build Status](https://travis-ci.org/amzn/ion-hash-python.svg?branch=master)](https://travis-ci.org/amzn/ion-hash-python)
+
+This package is designed to work with **Python 3.4+**.
+
+## Getting Started
+
+The following Python code calculates a hash for the Ion value `[1, 2, 3]` using the MD5 hash function:
+
+```python
+from io import BytesIO
+
+from amazon.ion.core import IonEventType
+from amazon.ion.reader import blocking_reader
+from amazon.ion.reader import NEXT_EVENT
+from amazon.ion.reader_managed import managed_reader
+from amazon.ion.reader_text import text_reader
+
+from amazon.ionhash.hasher import hash_reader
+from amazon.ionhash.hasher import hashlib_hash_function_provider
+from amazon.ionhash.hasher import HashEvent
+
+
+ion = b'[1, 2, 3]'
+hash_function = "md5"
+
+reader = hash_reader(
+    blocking_reader(managed_reader(text_reader(), None), BytesIO(ion)),
+    hashlib_hash_function_provider(hash_function))
+
+while True:
+    event = reader.send(NEXT_EVENT)
+    if event.event_type == IonEventType.STREAM_END:
+        break
+
+digest = reader.send(HashEvent.DIGEST)
+print("digest:", ''.join(' %02x' % x for x in digest))
+```
+
+When run, it produces the following output:
+```
+digest:  8f 3b f4 b1 93 5c f4 69 c9 c1 0c 31 52 4b 26 25
+```
+
+## Development
+It is recommended to use `venv` to create a clean environment to build/test ion-hash-python as follows:
+
+```
+$ python3 -m venv venv
+...
+$ . venv/bin/activate
+$ pip install -r requirements.txt
+$ pip install -e .
+```
+
+You should then be able to run the test suite by executing `python setup.py tests`, or simply running `py.test`.
+
+### Tox Setup
+In order to verify that ion-hash-python works on all supported platforms, we use a combination
+of [tox](http://tox.readthedocs.io/en/latest/) with [pyenv](https://github.com/yyuu/pyenv).
+
+Install relevant versions of Python:
+```
+$ for V in 3.4.10 3.5.7 3.6.8 3.7.3 pypy3.6-7.1.0; do pyenv install $V; done
+```
+
+Once you have these installations, add each as a local `pyenv` configuration:
+```
+$ pyenv local 3.4.10 3.5.7 3.6.8 3.7.3 pypy3.6-7.1.0
+```
+
+Assuming you have `pyenv` properly set up (making sure `pyenv init` is evaluated into your shell),
+you can now run `tox`:
+
+```
+# Run tox for all versions of Python (this executes `py.test` for each supported platform):
+$ tox
+
+# Run tox for just Python 3.4 and 3.5:
+$ tox -e py34,py35
+
+# Run tox for a specific version and run py.test with high verbosity:
+$ tox -e py34 -- py.test -vv
+
+# Run tox for a specific version and start the virtual env's Python REPL:
+$ tox -e py35 -- python
+```
 
 ## License
 
 This library is licensed under the Apache 2.0 License. 
+
