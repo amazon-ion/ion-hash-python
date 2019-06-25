@@ -42,7 +42,7 @@ def _test_name(ion_test):
     if len(ion_test.ion_annotations) > 0:
         test_name = ion_test.ion_annotations[0].text
     else:
-        test_name = ion.dumps(ion_test['ion'], binary=False).__str__()
+        test_name = str(ion.dumps(ion_test['ion'], binary=False))
         if test_name.startswith(_IVM):
             test_name = test_name[len(_IVM):]
 
