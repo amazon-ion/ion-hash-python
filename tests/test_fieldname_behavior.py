@@ -76,7 +76,7 @@ def test_no_fieldname_in_hash(test_data):
         new_event = IonEvent(e.event_type, e.ion_type, e.value, field_name, e.annotations, e.depth + 1)
         hw.send(new_event)
     writer.send(IonEvent(IonEventType.CONTAINER_END, IonType.STRUCT))
-    writer.send(events[-1])
+    writer.send(events[-1])     # send the final event (which should be a STREAM_END event)
 
     output = buf.getvalue()
     hw_digest = hw.send(HashEvent.DIGEST)
