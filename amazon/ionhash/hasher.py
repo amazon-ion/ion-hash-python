@@ -179,7 +179,10 @@ _ESCAPE_BYTE = 0x0C
 _BEGIN_MARKER = bytes([_BEGIN_MARKER_BYTE])
 _END_MARKER = bytes([_END_MARKER_BYTE])
 
-# Type/Qualifier byte for each Ion type:
+# Type/Qualifier byte for each Ion type.  This lookup table is used when
+# serializing null.*, container, string, and symbol values.  The TQ byte
+# for other values is derived from serialization performed by functions
+# from the writer_binary_raw module.
 _TQ = {
     IonType.NULL:      0x0F,
     IonType.BOOL:      0x10,
