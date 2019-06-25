@@ -9,6 +9,7 @@ from amazon.ion.core import IonEvent
 from amazon.ion.core import IonEventType
 from amazon.ion.core import IonType
 from amazon.ion.util import Enum
+from amazon.ion.util import coroutine
 from amazon.ion.reader import NEXT_EVENT
 from amazon.ion.reader import SKIP_EVENT
 from amazon.ion.writer_binary_raw import _serialize_blob
@@ -67,6 +68,7 @@ class _HashlibHash(IonHasher):
         return digest
 
 
+@coroutine
 def hash_reader(reader, hash_function_provider):
     """Provides a coroutine that wraps an ion-python reader and adds Ion Hash functionality.
 
@@ -87,11 +89,10 @@ def hash_reader(reader, hash_function_provider):
         bytes:  The result of hashing.
         other values:  As defined by the provided reader coroutine.
     """
-    hr = _hasher(_hash_reader_handler, reader, hash_function_provider)
-    next(hr)    # prime the coroutine
-    return hr
+    return _hasher(_hash_reader_handler, reader, hash_function_provider)
 
 
+@coroutine
 def hash_writer(writer, hash_function_provider):
     """Provides a coroutine that wraps an ion-python writer and adds Ion Hash functioality.
 
@@ -108,9 +109,7 @@ def hash_writer(writer, hash_function_provider):
         bytes:  The result of hashing.
         other values:  As defined by the provided writer coroutine.
     """
-    hw = _hasher(_hash_writer_handler, writer, hash_function_provider)
-    next(hw)    # prime the coroutine
-    return hw
+    return _hasher(_hash_writer_handler, writer, hash_function_provider)
 
 
 def _hasher(handler, delegate, hash_function_provider):
