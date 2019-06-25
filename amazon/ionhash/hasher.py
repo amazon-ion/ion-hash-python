@@ -285,7 +285,7 @@ class _Serializer:
     def _write_symbol(self, token):
         self._begin_marker()
         _bytes = _serialize_symbol_token(token)
-        [tq, representation] = _scalar_or_null_split_parts(IonEvent(None, IonType.SYMBOL), _bytes)
+        [tq, representation] = _scalar_or_null_split_parts(IonType.SYMBOL, _bytes)
         self._update(bytes([tq]))
         if len(representation) > 0:
             self._update(_escape(representation))
@@ -295,7 +295,7 @@ class _Serializer:
         self._handle_annotations_begin(ion_event)
         self._begin_marker()
         scalar_bytes = _serializer(ion_event)(ion_event)
-        [tq, representation] = _scalar_or_null_split_parts(ion_event, scalar_bytes)
+        [tq, representation] = _scalar_or_null_split_parts(ion_event.ion_type, scalar_bytes)
         self._update(bytes([tq]))
         if len(representation) > 0:
             self._update(_escape(representation))
@@ -390,7 +390,7 @@ _UPDATE_SCALAR_HASH_BYTES_JUMP_TABLE = {
 }
 
 
-def _scalar_or_null_split_parts(ion_event, _bytes):
+def _scalar_or_null_split_parts(ion_type, _bytes):
     """Splits scalar bytes into TQ and representation; also handles any special case binary cleanup."""
     offset = 1 + _get_length_length(_bytes)
 
@@ -398,8 +398,8 @@ def _scalar_or_null_split_parts(ion_event, _bytes):
     representation = _bytes[offset:]
 
     tq = _bytes[0]
-    if (ion_event.ion_type != IonType.BOOL
-            and ion_event.ion_type != IonType.SYMBOL
+    if (ion_type != IonType.BOOL
+            and ion_type != IonType.SYMBOL
             and tq & 0x0F != 0x0F):      # not a null value
         tq &= 0xF0                       # zero-out the L nibble
 
