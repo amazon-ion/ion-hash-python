@@ -1,6 +1,6 @@
-import amazon.ion
 from amazon.ion.core import MultimapValue
 from amazon.ion.simple_types import _ion_type_for
+from amazon.ion.simple_types import IonPyDict
 
 from collections import MutableMapping, OrderedDict
 import six
@@ -74,5 +74,5 @@ class _OrderedMultimap(MutableMapping):
         return self.__store.__repr__()
 
 
-amazon.ion.simple_types.IonPyDict = _ion_type_for('IonPyDict', _OrderedMultimap)
+IonPyDict = _ion_type_for('IonPyDict', _OrderedMultimap)
 
