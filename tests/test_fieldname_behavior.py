@@ -88,7 +88,7 @@ def test_no_fieldname_in_hash(test_data):
         event = reader.send(NEXT_EVENT)
         if event.event_type == IonEventType.CONTAINER_START:
             hr = hash_reader(reader, hash_function_provider("identity"))
-            for i in range(0, events.__len__() - 1):
+            for i in range(0, len(events) - 1):
                 e = hr.send(NEXT_EVENT)
             hr_digest = hr.send(HashEvent.DIGEST)
         if event.event_type == IonEventType.STREAM_END:

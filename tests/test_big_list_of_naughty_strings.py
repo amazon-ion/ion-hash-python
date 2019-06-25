@@ -128,11 +128,11 @@ class _TestValue:
 
         if self.ion.startswith(_ion_prefix):
             self.valid_ion = True
-            self.ion = self.ion[_ion_prefix.__len__():]
+            self.ion = self.ion[len(_ion_prefix):]
 
         if self.ion.startswith(_invalid_ion_prefix):
             self.valid_ion = False
-            self.ion = self.ion[_invalid_ion_prefix.__len__():]
+            self.ion = self.ion[len(_invalid_ion_prefix):]
 
     def symbol(self):
         s = self.ion

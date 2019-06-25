@@ -11,7 +11,7 @@ def test_hash_reader():
     algorithm = "md5"
 
     # calculate max # of events
-    max_events = consume(binary_reader_over(ion_str)).__len__()
+    max_events = len(consume(binary_reader_over(ion_str)))
 
     # calculate expected digest
     hr = hash_reader(binary_reader_over(ion_str), hash_function_provider(algorithm))

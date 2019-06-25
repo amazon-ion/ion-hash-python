@@ -243,7 +243,7 @@ class _Hasher:
         return self._current_hasher.digest()
 
     def _depth(self):
-        return self._hasher_stack.__len__() - 1
+        return len(self._hasher_stack) - 1
 
 
 class _Serializer:
@@ -258,7 +258,7 @@ class _Serializer:
             self._write_symbol(ion_event.field_name)
 
     def _handle_annotations_begin(self, ion_event, is_container=False):
-        if ion_event.annotations.__len__() > 0:
+        if len(ion_event.annotations) > 0:
             self._begin_marker()
             self.hash_function.update(_TQ_ANNOTATED_VALUE)
             for annotation in ion_event.annotations:
@@ -267,7 +267,7 @@ class _Serializer:
                 self._has_container_annotations = True
 
     def _handle_annotations_end(self, ion_event = None, is_container=False):
-        if (ion_event is not None and ion_event.annotations.__len__() > 0) \
+        if (ion_event is not None and len(ion_event.annotations) > 0) \
                 or (is_container and self._has_container_annotations):
             self._end_marker()
             if is_container:
@@ -287,7 +287,7 @@ class _Serializer:
         _bytes = _serialize_symbol_token(token)
         [tq, representation] = _scalar_or_null_split_parts(IonEvent(None, IonType.SYMBOL), _bytes)
         self._update(bytes([tq]))
-        if representation.__len__() > 0:
+        if len(representation) > 0:
             self._update(_escape(representation))
         self._end_marker()
 
@@ -297,7 +297,7 @@ class _Serializer:
         scalar_bytes = _serializer(ion_event)(ion_event)
         [tq, representation] = _scalar_or_null_split_parts(ion_event, scalar_bytes)
         self._update(bytes([tq]))
-        if representation.__len__() > 0:
+        if len(representation) > 0:
             self._update(_escape(representation))
         self._end_marker()
         self._handle_annotations_end(ion_event)
@@ -419,8 +419,8 @@ def _get_length_length(_bytes):
 
 def _bytearray_comparator(a, b):
     """Implements a comparator using the lexicographical ordering of octets as unsigned integers."""
-    a_len = a.__len__()
-    b_len = b.__len__()
+    a_len = len(a)
+    b_len = len(b)
     i = 0
     while i < a_len and i < b_len:
         a_byte = a[i]

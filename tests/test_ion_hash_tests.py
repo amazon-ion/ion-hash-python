@@ -39,7 +39,7 @@ _IVM = "$ion_1_0 "
 
 
 def _test_name(ion_test):
-    if ion_test.ion_annotations.__len__() > 0:
+    if len(ion_test.ion_annotations) > 0:
         test_name = ion_test.ion_annotations[0].text
     else:
         test_name = ion.dumps(ion_test['ion'], binary=False).__str__()
@@ -192,7 +192,7 @@ def _run_test(ion_test, digester):
 
         actual_digest_bytes = digester(algorithm)
 
-        if expected_updates.__len__() > 0:
+        if len(expected_updates) > 0:
             assert _actual_updates == expected_updates
 
         if final_digest is not None:
