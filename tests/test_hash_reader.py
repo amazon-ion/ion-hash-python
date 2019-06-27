@@ -11,8 +11,8 @@
 # express or implied. See the License for the specific language governing
 # permissions and limitations under the License.
 
-from amazon.ionhash.hasher import hash_reader
-from amazon.ionhash.hasher import HashEvent
+from ionhash.hasher import hash_reader
+from ionhash.hasher import HashEvent
 
 from .util import consume
 from .util import binary_reader_over

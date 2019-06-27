@@ -11,7 +11,7 @@
 # express or implied. See the License for the specific language governing
 # permissions and limitations under the License.
 
-from amazon.ionhash.hasher import _escape
+from ionhash.hasher import _escape
 
 
 def test_escape():

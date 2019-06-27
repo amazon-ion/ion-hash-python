@@ -14,8 +14,8 @@
 import pytest
 
 from amazon.ion.reader import NEXT_EVENT
-from amazon.ionhash.hasher import hash_reader
-from amazon.ionhash.hasher import HashEvent
+from ionhash.hasher import hash_reader
+from ionhash.hasher import HashEvent
 
 from .util import binary_reader_over
 from .util import hash_function_provider

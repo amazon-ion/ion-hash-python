@@ -89,38 +89,52 @@ def hash_reader(reader, hash_function_provider):
     couroutine's behavior matches that of the wrapped reader.
 
     Notes:
-        The coroutine translates any `SKIP_EVENT`s into a series of `NEXT_EVENT`s in order
+        The coroutine translates any amazon.ion.reader.SKIP_EVENTs into a series of amazon.ion.reader.NEXT_EVENTs in order
         to ensure that the hash correctly includes any subsequent or nested values.
 
     Args:
-        reader(couroutine):  An ion-python reader coroutine.
-        hash_function_provider(function):  A function that returns a function that produces
-            ``IonHasher`` instances when called.  Note that multiple ``IonHasher`` instances
-            may be required to hash a single value (depending on the type of the Ion value).
+        reader(couroutine):
+            An ion-python reader coroutine.
+
+        hash_function_provider(function):
+            A function that returns a function that produces ``IonHasher`` instances when called.
+
+            Note that multiple ``IonHasher`` instances may be required to hash a single value
+            (depending on the type of the Ion value).
 
     Yields:
-        bytes:  The result of hashing.
-        other values:  As defined by the provided reader coroutine.
+        bytes:
+            The result of hashing.
+
+        other values:
+            As defined by the provided reader coroutine.
     """
     return _hasher(_hash_reader_handler, reader, hash_function_provider)
 
 
 @coroutine
 def hash_writer(writer, hash_function_provider):
-    """Provides a coroutine that wraps an ion-python writer and adds Ion Hash functioality.
+    """Provides a coroutine that wraps an ion-python writer and adds Ion Hash functionality.
 
     The given coroutine yields `bytes` when given ``HashEvent.DIGEST``.  Otherwise, the
     couroutine's behavior matches that of the wrapped writer.
 
     Args:
-        writer(coroutine):  An ion-python writer coroutine.
-        hash_function_provider(function):  A function that returns a function that produces
-            ``IonHasher`` instances when called.  Note that multiple ``IonHasher`` instances
-            may be required to hash a single value (depending on the type of the Ion value).
+        writer(coroutine):
+            An ion-python writer coroutine.
+
+        hash_function_provider(function):
+            A function that returns a function that produces ``IonHasher`` instances when called.
+
+            Note that multiple ``IonHasher`` instances may be required to hash a single value
+            (depending on the type of the Ion value).
 
     Yields:
-        bytes:  The result of hashing.
-        other values:  As defined by the provided writer coroutine.
+        bytes:
+            The result of hashing.
+
+        other values:
+            As defined by the provided writer coroutine.
     """
     return _hasher(_hash_writer_handler, writer, hash_function_provider)
 
