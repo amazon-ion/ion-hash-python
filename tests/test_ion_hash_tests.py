@@ -24,13 +24,12 @@ from amazon.ion.reader_binary import binary_reader
 from amazon.ion.reader import NEXT_EVENT
 from amazon.ion.reader import SKIP_EVENT
 from amazon.ion.writer import blocking_writer
-from amazon.ion.writer_binary import binary_writer
 from amazon.ion.writer_text import raw_writer
 from amazon.ion.core import IonEventType
 from amazon.ion.core import IonEvent
-from amazon.ionhash.hasher import hash_reader
-from amazon.ionhash.hasher import hash_writer
-from amazon.ionhash.hasher import HashEvent
+from ionhash.hasher import hash_reader
+from ionhash.hasher import hash_writer
+from ionhash.hasher import HashEvent
 
 from .util import hash_function_provider
 from .util import sexp_to_bytearray

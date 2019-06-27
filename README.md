@@ -18,9 +18,9 @@ from amazon.ion.reader import NEXT_EVENT
 from amazon.ion.reader_managed import managed_reader
 from amazon.ion.reader_text import text_reader
 
-from amazon.ionhash.hasher import hash_reader
-from amazon.ionhash.hasher import hashlib_hash_function_provider
-from amazon.ionhash.hasher import HashEvent
+from ionhash.hasher import hash_reader
+from ionhash.hasher import hashlib_hash_function_provider
+from ionhash.hasher import HashEvent
 
 
 ion = b'[1, 2, 3]'

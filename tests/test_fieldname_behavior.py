@@ -22,9 +22,9 @@ from amazon.ion.reader import NEXT_EVENT
 from amazon.ion.reader import SKIP_EVENT
 from amazon.ion.writer import blocking_writer
 from amazon.ion.writer_text import raw_writer
-from amazon.ionhash.hasher import hash_reader
-from amazon.ionhash.hasher import hash_writer
-from amazon.ionhash.hasher import HashEvent
+from ionhash.hasher import hash_reader
+from ionhash.hasher import hash_writer
+from ionhash.hasher import HashEvent
 
 from .util import binary_reader_over
 from .util import consume

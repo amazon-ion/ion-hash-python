@@ -20,10 +20,10 @@ from amazon.ion.reader import NEXT_EVENT
 from amazon.ion.writer import blocking_writer
 from amazon.ion.writer_text import raw_writer
 from amazon.ion.core import IonEventType
-from amazon.ionhash.hasher import hash_reader
-from amazon.ionhash.hasher import hash_writer
-from amazon.ionhash.hasher import HashEvent
-from amazon.ionhash.hasher import hashlib_hash_function_provider
+from ionhash.hasher import hash_reader
+from ionhash.hasher import hash_writer
+from ionhash.hasher import HashEvent
+from ionhash.hasher import hashlib_hash_function_provider
 from .util import binary_reader_over
 
 

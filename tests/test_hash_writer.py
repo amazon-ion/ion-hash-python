@@ -16,12 +16,11 @@ from io import BytesIO
 from amazon.ion.writer import blocking_writer
 from amazon.ion.writer_binary import binary_writer
 from amazon.ion.writer_text import raw_writer
-from amazon.ionhash.hasher import hash_writer
+from ionhash.hasher import hash_writer
 
 from .util import binary_reader_over
 from .util import consume
 from .util import hash_function_provider
-from .util import hex_string
 
 
 def test_hash_writer():
