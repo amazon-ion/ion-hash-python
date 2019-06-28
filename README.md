@@ -2,6 +2,7 @@
 An implementation of [Amazon Ion Hash](http://amzn.github.io/ion-hash) in Python.
 
 [![Build Status](https://travis-ci.org/amzn/ion-hash-python.svg?branch=master)](https://travis-ci.org/amzn/ion-hash-python)
+[![Documentation Status](https://readthedocs.org/projects/ion-hash-python/badge/?version=latest)](https://ion-hash-python.readthedocs.io/en/latest/?badge=latest)
 
 This package is designed to work with **Python 3.4+**.
 
