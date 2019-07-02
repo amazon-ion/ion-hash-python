@@ -12,26 +12,21 @@
 # permissions and limitations under the License.
 
 import amazon.ion.simpleion as ion
-from .util import hex_string
+
+from pytest import raises
 
 
 def test_simpleion_invalid_no_params():
-    try:
+    with raises(Exception):
         ion.loads('blah').ion_hash()
-        raise Exception("Expected an exception to be raised")
-    except:
-        pass
 
 
 def test_simpleion_invalid_too_many_params():
     def noop_function():
         pass
 
-    try:
+    with raises(Exception):
         ion.loads('blah').ion_hash("md5", noop_function)
-        raise Exception("Expected an exception to be raised")
-    except:
-        pass
 
 
 def test_simpleion_with_algorithm():

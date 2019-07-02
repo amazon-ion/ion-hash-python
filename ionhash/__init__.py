@@ -24,7 +24,7 @@ from ionhash.hasher import hash_writer
 from ionhash.hasher import HashEvent
 
 
-# pydoc for this function is DUPLICATED in docs/index.rst
+# pydoc for this method is DUPLICATED in docs/index.rst
 def ion_hash(self, algorithm=None, hash_function_provider=None):
     """Given an algorithm or hash_function_provider, computes the Ion hash
     of this value.
@@ -60,5 +60,6 @@ def ion_hash(self, algorithm=None, hash_function_provider=None):
     return hw.send(HashEvent.DIGEST)
 
 
+# adds the `ion_hash` method to all simpleion value classes:
 _IonNature.ion_hash = ion_hash
 
