@@ -11,7 +11,8 @@
 # express or implied. See the License for the specific language governing
 # permissions and limitations under the License.
 
-"""Provides readers/writers that hash Ion values according to the Ion Hash Specification."""
+"""Adds an `ion_hash()` method to all simpleion value classes, and provides
+readers/writers that hash Ion values according to the Ion Hash Specification."""
 
 from abc import ABC, abstractmethod
 from functools import cmp_to_key
@@ -45,7 +46,7 @@ class HashEvent(Enum):
 
 
 def hashlib_hash_function_provider(algorithm):
-    """A hash function provider based on hashlib."""
+    """A hash function provider based on `hashlib`."""
     def _f():
         return _HashlibHash(algorithm)
     return _f
@@ -67,7 +68,7 @@ class IonHasher(ABC):
 
 
 class _HashlibHash(IonHasher):
-    """Implements the expected hash function methods for the specified algorithm using hashlib."""
+    """Implements the expected hash function methods for the specified algorithm using `hashlib`."""
     def __init__(self, algorithm):
         self._algorithm = algorithm
         self._hasher = hashlib.new(self._algorithm)
@@ -97,7 +98,7 @@ def hash_reader(reader, hash_function_provider):
             An ion-python reader coroutine.
 
         hash_function_provider(function):
-            A function that returns a function that produces ``IonHasher`` instances when called.
+            A function that returns a new ``IonHasher`` instance when called.
 
             Note that multiple ``IonHasher`` instances may be required to hash a single value
             (depending on the type of the Ion value).
@@ -124,7 +125,7 @@ def hash_writer(writer, hash_function_provider):
             An ion-python writer coroutine.
 
         hash_function_provider(function):
-            A function that returns a function that produces ``IonHasher`` instances when called.
+            A function that returns a new ``IonHasher`` instance when called.
 
             Note that multiple ``IonHasher`` instances may be required to hash a single value
             (depending on the type of the Ion value).
