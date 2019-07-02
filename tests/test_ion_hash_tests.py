@@ -48,6 +48,7 @@ def _test_data(algorithm):
 
 
 _IVM = "$ion_1_0 "
+_IVM_BYTES = [0xE0, 0x01, 0x00, 0xEA]
 
 
 def _test_name(ion_test):
@@ -66,7 +67,7 @@ def _to_buffer(ion_test, binary):
         v = ion.dumps(ion_test['ion'], binary=binary)
 
     if '10n' in ion_test:
-        v = bytearray([0xE0, 0x01, 0x00, 0xEA])  # $ion_1_0
+        v = bytearray(_IVM_BYTES)
         for byte in ion_test['10n']:
             v.append(byte)
 
@@ -177,6 +178,25 @@ def test_writer(ion_test):
     _run_test(ion_test,
               _writer_provider(_reader_provider("text"),
                                _to_buffer(ion_test, binary=False)))
+
+
+@pytest.mark.parametrize("ion_test", _test_data("identity"), ids=_test_name)
+def test_simpleion(ion_test):
+    def to_ion_hash(algorithm):
+        if 'ion' in ion_test:
+            value = ion_test['ion']
+
+        if '10n' in ion_test:
+            ba = bytearray(_IVM_BYTES)
+            for byte in ion_test['10n']:
+                ba.append(byte)
+            value = ion.load(BytesIO(ba))
+
+        return value.ion_hash(hash_function_provider=hash_function_provider(algorithm,
+                                                                            _actual_updates,
+                                                                            _actual_digests))
+
+    _run_test(ion_test, to_ion_hash)
 
 
 _actual_updates = []
