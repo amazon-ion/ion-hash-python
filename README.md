@@ -10,7 +10,7 @@ This package is designed to work with **Python 3.4+**.
 
 Computing the Ion hash of a simpleion value may be done by calling the `ion_hash()` method.  For example:
 
-```python
+```
 >>> import amazon.ion.simpleion as ion
 >>> import ionhash
 >>> obj = ion.loads('[1, 2, 3]')
