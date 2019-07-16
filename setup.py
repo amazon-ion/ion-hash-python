@@ -13,6 +13,7 @@ setup(
 
     install_requires=[
         'six',
+        'amazon.ion==0.4.0',
     ],
 
     setup_requires=[
