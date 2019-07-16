@@ -14,7 +14,7 @@ Computing the Ion hash of a simpleion value may be done by calling the `ion_hash
 >>> import amazon.ion.simpleion as ion
 >>> import ionhash
 >>> obj = ion.loads('[1, 2, 3]')
->>> hash = obj.ion_hash('md5')
+>>> digest = obj.ion_hash('md5')
 >>> print('digest:', ''.join(' %02x' % x for x in digest))
 digest:  8f 3b f4 b1 93 5c f4 69 c9 c1 0c 31 52 4b 26 25
 ```
