@@ -15,7 +15,7 @@ from six import BytesIO
 
 from amazon.ion.core import ION_STREAM_END_EVENT
 from amazon.ion.simple_types import _IonNature
-from amazon.ion.simpleion import _dump
+from amazon.ion.simpleion import _dump, _FROM_TYPE
 from amazon.ion.writer import blocking_writer
 from amazon.ion.writer_binary import binary_writer
 
@@ -55,7 +55,7 @@ def ion_hash(self, algorithm=None, hash_function_provider=None):
         hfp = hash_function_provider
 
     hw = hash_writer(blocking_writer(binary_writer(), BytesIO()), hfp)
-    _dump(self, hw)
+    _dump(self, hw, _FROM_TYPE)
     hw.send(ION_STREAM_END_EVENT)
     return hw.send(HashEvent.DIGEST)
 

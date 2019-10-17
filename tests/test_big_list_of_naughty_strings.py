@@ -75,27 +75,12 @@ class _TestValue:
     def blob(self):
         return "{{" + base64.b64encode(bytes(self.ion, "utf-8")).decode("utf-8") + "}}"
 
-    def annotated_symbol(self):
-        return self.symbol() + "::" + self.symbol()
-
-    def annotated_string(self):
-        return self.symbol() + "::" + self.string()
-
-    def annotated_long_string(self):
-        return self.symbol() + "::" + self.long_string()
-
-    def annotated_clob(self):
-        return self.symbol() + "::" + self.clob()
-
-    def annotated_blob(self):
-        return self.symbol() + "::" + self.blob()
-
     def __str__(self):
         return self.ion
 
 
 def _test_strings():
-    path = abspath(join(abspath(__file__), '..', '..', 'tests', 'big-list-of-naughty-strings.txt'))
+    path = abspath(join(abspath(__file__), '..', '..', 'ion-hash-test', 'big_list_of_naughty_strings.txt'))
     file = open(path)
     lines = [line.rstrip('\n') for line in file]
     file.close()
