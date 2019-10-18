@@ -36,7 +36,7 @@ from .util import sexp_to_bytearray
 
 
 def _test_data(algorithm):
-    path = abspath(join(abspath(__file__), '..', '..', 'tests', 'ion_hash_tests.ion'))
+    path = abspath(join(abspath(__file__), '..', '..', 'ion-hash-test', 'ion_hash_tests.ion'))
     f = open(path)
     ion_tests = ion.loads(f.read(), single_value=False)
     f.close()

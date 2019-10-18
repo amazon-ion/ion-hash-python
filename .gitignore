@@ -11,5 +11,5 @@
 /venv
 /build
 /dist
-/amazon.ion.egg-info
+/ionhash.egg-info
 /docs/_build/
