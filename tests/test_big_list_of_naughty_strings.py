@@ -64,13 +64,8 @@ class _TestValue:
 
     def clob(self):
         s = self.string()
-        sb = ''
-        for c in s:
-            if ord(c) >= 128:
-                sb += "\\x" + "{0:x}".format(ord(c))
-            else:
-                sb += c
-        return "{{" + sb + "}}"
+        escaped_s = ''.join(u'\\x{0:x}'.format(b) if (b >= 128) else chr(b) for b in s.encode('utf-8'))
+        return u'{{' + escaped_s + u'}}'
 
     def blob(self):
         return "{{" + base64.b64encode(bytes(self.ion, "utf-8")).decode("utf-8") + "}}"
