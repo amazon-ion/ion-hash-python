@@ -1,0 +1,9 @@
+#!/bin/sh
+
+python -m venv ./venv
+. venv/bin/activate
+pip install -r $(dirname "$0")/../../requirements.txt 1>&2
+pip install -e $(dirname "$0")/../../. 1>&2
+
+$(dirname "$0")/ion-hash $@
+
