@@ -30,9 +30,14 @@ if len(sys.argv) < 3:
 algorithm = sys.argv[1]
 input_file = sys.argv[2]
 
-f = open(input_file)
-values = ion.loads(f.read(), single_value=False)
-f.close()
+opts = 'r'
+with open(input_file, 'rb') as f:
+    first_four = f.read(4)
+    if first_four == b'\xe0\x01\x00\xea':
+        opts = 'rb'
+
+with open(input_file, opts) as f:
+    values = ion.loads(f.read(), single_value=False)
 
 for value in values:
     try:
