@@ -10,4 +10,6 @@ matrix:
 install:
   - pip install -r requirements.txt
   - pip install -e .
-script: py.test
+script:
+  - py.test
+  - tools/ion-hash
