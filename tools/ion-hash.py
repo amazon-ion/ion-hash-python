@@ -24,7 +24,7 @@ if len(sys.argv) < 3:
     print()
     print("where [algorithm] is a hash function such as sha256")
     print()
-    sys.exit(1)
+    sys.exit()
 
 
 algorithm = sys.argv[1]
