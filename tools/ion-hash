@@ -1,0 +1,4 @@
+#!/bin/sh
+
+python $(dirname "$0")/ion-hash.py $@
+
