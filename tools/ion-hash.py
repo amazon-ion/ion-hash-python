@@ -17,32 +17,23 @@ import ionhash
 
 
 if len(sys.argv) < 3:
-    print("Utility that prints the Ion Hash of the top-level values in a file.");
-    print();
-    print("Usage:");
-    print("  ion-hash [algorithm] [filename]");
-    print();
-    print("where [algorithm] is a hash function such as sha256");
-    print();
-    sys.exit(1);
+    print("Utility that prints the Ion Hash of the top-level values in a file.")
+    print()
+    print("Usage:")
+    print("  ion-hash [algorithm] [filename]")
+    print()
+    print("where [algorithm] is a hash function such as sha256")
+    print()
+    sys.exit(1)
 
 
 algorithm = sys.argv[1]
 input_file = sys.argv[2]
 
-opts = 'r'
 with open(input_file, 'rb') as f:
-    first_four = f.read(4)
-    if first_four == b'\xe0\x01\x00\xea':
-        opts = 'rb'
-
-with open(input_file, opts) as f:
-    values = ion.loads(f.read(), single_value=False)
-
-for value in values:
-    try:
-        digest = value.ion_hash('md5')
-        print(''.join('%02x ' % x for x in value.ion_hash('md5'))[0:-1])
-    except Exception as e:
-        print('[unable to digest: ' + str(e) + ']')
-
+    values = ion.load(f, single_value=False)
+    for value in values:
+        try:
+            print(''.join('%02x ' % x for x in value.ion_hash(algorithm))[0:-1])
+        except Exception as e:
+            print('[unable to digest: ' + str(e) + ']')
