@@ -392,11 +392,16 @@ def _serialize_symbol(ion_event):
 
 def _serialize_symbol_token(token):
     ba = bytearray()
-    if token.sid == 0:
-        ba.append(_TQ_SYMBOL_SID0)
+    if hasattr(token, 'sid'):
+        if token.sid == 0:
+            ba.append(_TQ_SYMBOL_SID0)
+        else:
+            ba.append(_TQ[IonType.SYMBOL])
+            ba.extend(bytearray(token.text, encoding="utf-8"))
     else:
+        # 'token' is just a string
         ba.append(_TQ[IonType.SYMBOL])
-        ba.extend(bytearray(token.text, encoding="utf-8"))
+        ba.extend(bytearray(token, encoding="utf-8"))
     return ba
 
 
