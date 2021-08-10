@@ -1,3 +1,7 @@
+### 1.2.0 (2021-8-10)
+* Added ion-hash command-line tool
+* Fixed hasher symbol serialization to allow for non-symboltokens
+
 ### 1.1.0 (2019-10-22)
 * Added support for hashing timestamps with arbitrary precision
 * Updated amazon.ion dependency to require version >=0.5
