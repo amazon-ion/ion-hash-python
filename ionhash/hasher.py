@@ -475,19 +475,12 @@ def _bytearray_comparator(a, b):
 def _escape(_bytes):
     """If _bytes contains one or more BEGIN_MARKER_BYTEs, END_MARKER_BYTEs, or ESCAPE_BYTEs,
     returns a new bytearray with such bytes preceeded by a ESCAPE_BYTE;  otherwise, returns
-    the original _bytes unchanged."
+    the original _bytes unchanged.
     """
-    for b in _bytes:
-        if b == _BEGIN_MARKER_BYTE or b == _END_MARKER_BYTE or b == _ESCAPE_BYTE:
-            # found a byte that needs to be escaped;  build a new byte array that
-            # escapes that byte as well as any others
-            escaped_bytes = bytearray()
-            for c in _bytes:
-                if c == _BEGIN_MARKER_BYTE or c == _END_MARKER_BYTE or c == _ESCAPE_BYTE:
-                    escaped_bytes.append(_ESCAPE_BYTE)
-                escaped_bytes.append(c)
-            return escaped_bytes
-
+    if _BEGIN_MARKER_BYTE in _bytes or _END_MARKER_BYTE in _bytes or _ESCAPE_BYTE in _bytes:
+        return _bytes.replace(bytes([_ESCAPE_BYTE]), bytes([_ESCAPE_BYTE, _ESCAPE_BYTE])) \
+                     .replace(_BEGIN_MARKER, bytes([_ESCAPE_BYTE, _BEGIN_MARKER_BYTE])) \
+                     .replace(_END_MARKER, bytes([_ESCAPE_BYTE, _END_MARKER_BYTE]))
     # no escaping needed, return the original _bytes
     return _bytes
 

@@ -196,14 +196,14 @@ def test_simpleion(ion_test):
                                                                             _actual_updates,
                                                                             _actual_digests))
 
-    _run_test(ion_test, to_ion_hash)
-
+    # Do not assert on expected_updates because the implementation of ion_hash() is not backed by an ion_writer
+    _run_test(ion_test, to_ion_hash, should_assert_on_expected_updates=False)
 
 _actual_updates = []
 _actual_digests = []
 
 
-def _run_test(ion_test, digester):
+def _run_test(ion_test, digester, should_assert_on_expected_updates=True):
     expect = ion_test['expect']
     for algorithm in expect:
         expected_updates = []
@@ -211,7 +211,7 @@ def _run_test(ion_test, digester):
         final_digest = None
         for sexp in expect[algorithm]:
             annot = sexp.ion_annotations[0].text
-            if annot == "update":
+            if annot == "update" and should_assert_on_expected_updates:
                 expected_updates.append(sexp_to_bytearray(sexp))
                 pass
             elif annot == "digest":
@@ -224,7 +224,7 @@ def _run_test(ion_test, digester):
 
         actual_digest_bytes = digester(algorithm)
 
-        if len(expected_updates) > 0:
+        if should_assert_on_expected_updates and len(expected_updates) > 0:
             assert _actual_updates == expected_updates
 
         if final_digest is not None:
