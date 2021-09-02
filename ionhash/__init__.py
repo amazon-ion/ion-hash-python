@@ -15,8 +15,6 @@ from amazon.ion.simple_types import _IonNature
 
 from ionhash.fast_value_hasher import hash_value
 from ionhash.hasher import hashlib_hash_function_provider
-from ionhash.hasher import hash_writer
-from ionhash.hasher import HashEvent
 
 
 # pydoc for this method is DUPLICATED in docs/index.rst
