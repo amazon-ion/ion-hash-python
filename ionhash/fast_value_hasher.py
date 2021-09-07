@@ -87,13 +87,17 @@ def _h_field(field_name, field_value, hfp):
     return hash_fn.digest()
 
 
+# Precomputed bytes for the unknown symbol (sid $0) case of _write_symbol()
+_SERIALIZED_SYMBOL_SID0_BYTES = bytes([_BEGIN_MARKER_BYTE, _TQ_SYMBOL_SID0, _END_MARKER_BYTE])
+
+
 # Function for writing symbol tokens (annotations and field names)
 # Has simplified logic compared to regular function because we can make some assumptions about it
 # Namely, that this value does not have annotations, it is always type "symbol"
 def _write_symbol(text_or_symbol_token):
     text = getattr(text_or_symbol_token, 'text', text_or_symbol_token)
     if text is None:
-        return bytes([_BEGIN_MARKER_BYTE, _TQ_SYMBOL_SID0, _END_MARKER_BYTE])
+        return _SERIALIZED_SYMBOL_SID0_BYTES
     else:
         return _BEGIN_MARKER + bytes([_TQ[IonType.SYMBOL]]) \
                + _escape(bytearray(text, encoding="utf-8")) + _END_MARKER
