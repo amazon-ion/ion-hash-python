@@ -205,6 +205,11 @@ _END_MARKER_BYTE = 0x0E
 _ESCAPE_BYTE = 0x0C
 _BEGIN_MARKER = bytes([_BEGIN_MARKER_BYTE])
 _END_MARKER = bytes([_END_MARKER_BYTE])
+_ESCAPE_MARKER = bytes([_ESCAPE_BYTE])
+_ESCAPED_BEGIN_MARKER = bytes([_ESCAPE_BYTE, _BEGIN_MARKER_BYTE])
+_ESCAPED_END_MARKER = bytes([_ESCAPE_BYTE, _END_MARKER_BYTE])
+_ESCAPED_ESCAPE_MARKER = bytes([_ESCAPE_BYTE, _ESCAPE_BYTE])
+
 
 # Type/Qualifier byte for each Ion type.  This lookup table is used when
 # serializing null.*, container, string, and symbol values.  The TQ byte
@@ -478,9 +483,9 @@ def _escape(_bytes):
     the original _bytes unchanged.
     """
     if _BEGIN_MARKER_BYTE in _bytes or _END_MARKER_BYTE in _bytes or _ESCAPE_BYTE in _bytes:
-        return _bytes.replace(bytes([_ESCAPE_BYTE]), bytes([_ESCAPE_BYTE, _ESCAPE_BYTE])) \
-                     .replace(_BEGIN_MARKER, bytes([_ESCAPE_BYTE, _BEGIN_MARKER_BYTE])) \
-                     .replace(_END_MARKER, bytes([_ESCAPE_BYTE, _END_MARKER_BYTE]))
+        return _bytes.replace(_ESCAPE_MARKER, _ESCAPED_ESCAPE_MARKER) \
+                     .replace(_BEGIN_MARKER, _ESCAPED_BEGIN_MARKER) \
+                     .replace(_END_MARKER, _ESCAPED_END_MARKER)
     # no escaping needed, return the original _bytes
     return _bytes
 
