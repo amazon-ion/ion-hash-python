@@ -57,17 +57,37 @@ digest:  8f 3b f4 b1 93 5c f4 69 c9 c1 0c 31 52 4b 26 25
 ```
 
 ## Development
-It is recommended to use `venv` to create a clean environment to build/test ion-hash-python as follows:
+
+This repository contains a git submodule called `ion-hash-test` which holds data used by `ion-hash-python`'s unit tests.
+
+The easiest way to clone the ion-hash-python repository and initialize its `ion-hash-test` submodule is to run the 
+following command:
+
+```
+$ git clone --recursive https://github.com/amzn/ion-hash-python.git ion-hash-python
+```
+
+Alternatively, the submodule may be initialized independently from the clone by running the following commands:
+
+$ git submodule init
+$ git submodule update
+
+Once the repository has been fully initialized, `cd` into it:
+
+```
+$ cd ion-hash-python
+```
+
+Then use `venv` to create a clean environment to build/test ion-hash-python as follows:
 
 ```
 $ python3 -m venv venv
-...
 $ . venv/bin/activate
 $ pip install -r requirements.txt
 $ pip install -e .
 ```
 
-You should then be able to run the test suite by executing `python setup.py tests`, or simply running `py.test`.
+You should then be able to run the test suite by executing `python setup.py test`, or simply running `py.test`.
 
 ### Tox Setup
 In order to verify that ion-hash-python works on all supported platforms, we use a combination
