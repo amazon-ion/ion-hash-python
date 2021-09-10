@@ -1,4 +1,9 @@
-### 1.2.0 (2021-8-10)
+### 1.3.0 (2021-09-10)
+* Adds a faster implementation of _IonNature.ion_hash (#22)
+* Precomputes several commonly used byte arrays (#23)
+* Adds details to the README's setup instructions (#25)
+
+### 1.2.0 (2021-08-10)
 * Added ion-hash command-line tool
 * Fixed hasher symbol serialization to allow for non-symboltokens
 
