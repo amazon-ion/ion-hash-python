@@ -78,7 +78,7 @@ Once the repository has been fully initialized, `cd` into it:
 $ cd ion-hash-python
 ```
 
-Then use `venv` to create a clean environment to build/test ion-hash-python as follows:
+Then use `venv` to create a clean environment to build/test `ion-hash-python` as follows:
 
 ```
 $ python3 -m venv venv
