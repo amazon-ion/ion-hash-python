@@ -15,7 +15,8 @@ import amazon.ion
 from amazon.ion.core import MultimapValue
 from amazon.ion.simple_types import _ion_type_for
 
-from collections import MutableMapping, OrderedDict
+from collections import OrderedDict
+from collections.abc import MutableMapping
 import six
 
 
