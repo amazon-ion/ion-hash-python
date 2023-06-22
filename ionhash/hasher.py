@@ -15,6 +15,7 @@
 readers/writers that hash Ion values according to the Ion Hash Specification."""
 
 from abc import ABC, abstractmethod
+from enum import IntEnum
 from functools import cmp_to_key
 import hashlib
 
@@ -22,7 +23,6 @@ from amazon.ion.core import DataEvent
 from amazon.ion.core import IonEvent
 from amazon.ion.core import IonEventType
 from amazon.ion.core import IonType
-from amazon.ion.util import Enum
 from amazon.ion.util import coroutine
 from amazon.ion.reader import NEXT_EVENT
 from amazon.ion.reader import SKIP_EVENT
@@ -35,7 +35,7 @@ from amazon.ion.writer_binary_raw import _serialize_int
 from amazon.ion.writer_binary_raw import _serialize_timestamp
 
 
-class HashEvent(Enum):
+class HashEvent(IntEnum):
     """Events that may be pushed into a hash_reader or hash_writer coroutine,
     in addition to those allowed by the wrapped reader/writer.
 
