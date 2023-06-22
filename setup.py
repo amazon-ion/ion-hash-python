@@ -11,11 +11,6 @@ setup(
 
     packages=find_packages(exclude=['tests*']),
 
-    install_requires=[
-        'six',
-        'amazon.ion>=0.5',
-    ],
-
     setup_requires=[
         'pytest-runner',
     ],
