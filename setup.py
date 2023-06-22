@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name='ionhash',
-    version='1.3.0-SNAPSHOT',
+    version='1.3.dev',
     description='Python implementation of Amazon Ion Hash',
     url='http://github.com/amzn/ion-hash-python',
     author='Amazon Ion Team',
