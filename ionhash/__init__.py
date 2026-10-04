@@ -11,7 +11,10 @@
 # express or implied. See the License for the specific language governing
 # permissions and limitations under the License.
 
-from amazon.ion.simple_types import _IonNature
+from amazon.ion.simple_types import (
+    IonPyNull, IonPyBool, IonPyInt, IonPyFloat, IonPyDecimal,
+    IonPyTimestamp, IonPySymbol, IonPyText, IonPyBytes, IonPyList, IonPyDict,
+)
 
 from ionhash.fast_value_hasher import hash_value
 from ionhash.hasher import hashlib_hash_function_provider
@@ -51,5 +54,9 @@ def ion_hash(self, algorithm=None, hash_function_provider=None):
 
 
 # adds the `ion_hash` method to all simpleion value classes:
-_IonNature.ion_hash = ion_hash
+for _ion_class in (
+    IonPyNull, IonPyBool, IonPyInt, IonPyFloat, IonPyDecimal,
+    IonPyTimestamp, IonPySymbol, IonPyText, IonPyBytes, IonPyList, IonPyDict,
+):
+    _ion_class.ion_hash = ion_hash
 

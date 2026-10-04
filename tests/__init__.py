@@ -13,7 +13,11 @@
 
 import amazon.ion
 from amazon.ion.core import MultimapValue
-from amazon.ion.simple_types import _ion_type_for
+try:
+    from amazon.ion.simple_types import _ion_type_for
+except ImportError:
+    # Ion Python 0.11+ uses concrete classes and preserves field order.
+    _ion_type_for = None
 
 from collections import OrderedDict
 from collections.abc import MutableMapping
@@ -88,5 +92,11 @@ class _OrderedMultimap(MutableMapping):
         return self.__store.__repr__()
 
 
-amazon.ion.simple_types.IonPyDict = _ion_type_for('IonPyDict', _OrderedMultimap)
+if _ion_type_for is not None:
+    amazon.ion.simple_types.IonPyDict = _ion_type_for('IonPyDict', _OrderedMultimap)
+
+# The specification vectors exceed the C reader's annotation limits.
+# Exercise that reader separately on ordinary values in test_simpletypes.
+import amazon.ion.simpleion
+amazon.ion.simpleion.c_ext = False
 

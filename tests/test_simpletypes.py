@@ -13,10 +13,27 @@
 
 from amazon.ion.core import IonType
 from amazon.ion.simple_types import IonPyFloat
+from amazon.ion import simpleion
+import pytest
+
+from ionhash import ion_hash
 
 
 def test_simpletype_with_annotation():
     ion_float = IonPyFloat.from_value(IonType.FLOAT, 123, (u'abc',))
     assert ion_float.ion_hash('md5') == \
            b'\x48\x87\x5a\x7c\x70\x8f\xfa\x6e\x24\x1b\x60\x35\xb7\xcd\x92\xcd'
+
+
+@pytest.mark.parametrize('use_extension', [False, True])
+@pytest.mark.parametrize('text', [
+    'null', 'null.int', 'true', '1', '1e0', '1.0', '2001-01-01T',
+    'symbol', '"text"', '{{aGVsbG8=}}', '{{"hello"}}', '[1]', '(1)', '{a:1}',
+])
+def test_hash_method_on_concrete_value_classes(text, use_extension, monkeypatch):
+    if use_extension:
+        pytest.importorskip('amazon.ion.ionc')
+    monkeypatch.setattr(simpleion, 'c_ext', use_extension)
+    value = simpleion.loads(text)
+    assert value.ion_hash('sha256') == ion_hash(value, 'sha256')
 

@@ -10,6 +10,7 @@ jobs:
     strategy:
       matrix:
         python-version: ['3.7', '3.8', '3.9', '3.10']
+        ion-version: ['pinned', 'latest']
     steps:
       - uses: actions/checkout@v2
       - name: Set up Python
@@ -22,6 +23,8 @@ jobs:
 
       - run: pip install --upgrade setuptools
       - run: pip install -r requirements.txt
+      - run: pip install --upgrade amazon.ion
+        if: matrix.ion-version == 'latest'
       - run: pip install -e .
       - run: py.test
       - run: tools/ion-hash
